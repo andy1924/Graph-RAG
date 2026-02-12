@@ -1,0 +1,1317 @@
+[
+    {
+        "nodes": [
+            {
+                "id": "Google Llc",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Larry Page",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Sergey Brin",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Sundar Pichai",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Alphabet Inc.",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Youtube",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Android",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Gmail",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Google Maps",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Google Drive",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Google Photos",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Google Assistant",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Nest",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Waymo",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Deepmind",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Fitbit",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Stadia",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Google Cloud",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Gemini",
+                "type": "Product",
+                "properties": {}
+            }
+        ],
+        "relationships": [
+            {
+                "source": "Google Llc",
+                "target": "Alphabet Inc.",
+                "type": "SUBSIDIARY",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Larry Page",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Sergey Brin",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Sundar Pichai",
+                "type": "CEO",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Youtube",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Android",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Gmail",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Google Maps",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Google Drive",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Google Photos",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Google Assistant",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Nest",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Waymo",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Deepmind",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Fitbit",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Stadia",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Google Cloud",
+                "type": "OWNS",
+                "properties": {}
+            },
+            {
+                "source": "Google Llc",
+                "target": "Gemini",
+                "type": "OWNS",
+                "properties": {}
+            }
+        ],
+        "source": {
+            "source": "data\\raw\\Google.txt"
+        }
+    },
+    {
+        "nodes": [
+            {
+                "id": "Microsoft Corporation",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Redmond, Washington",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Bill Gates",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Paul Allen",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Steve Ballmer",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Satya Nadella",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Activision Blizzard",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Linkedin",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Xbox",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Windows",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Ms-Dos",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Office",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft 365",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Azure",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Basic Interpreters",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Surface",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Skype Technologies",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Nokia",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Gaming",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Cloud",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft 365",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Research",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Security",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Industry",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Ai",
+                "type": "Division",
+                "properties": {}
+            },
+            {
+                "id": "Microsoft Developer",
+                "type": "Division",
+                "properties": {}
+            }
+        ],
+        "relationships": [
+            {
+                "source": "Microsoft Corporation",
+                "target": "Redmond, Washington",
+                "type": "HEADQUARTERS",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Bill Gates",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Paul Allen",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Activision Blizzard",
+                "type": "ACQUIRED",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Linkedin",
+                "type": "ACQUIRED",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Skype Technologies",
+                "type": "ACQUIRED",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Steve Ballmer",
+                "type": "CEO",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Satya Nadella",
+                "type": "CEO",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Windows",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Ms-Dos",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Microsoft Office",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Microsoft 365",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Azure",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Surface",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Basic Interpreters",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Xbox",
+                "type": "PRODUCT_LINE",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Microsoft Gaming",
+                "type": "HAS_DIVISION",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Microsoft Cloud",
+                "type": "HAS_DIVISION",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Microsoft 365",
+                "type": "HAS_DIVISION",
+                "properties": {}
+            },
+            {
+                "source": "Microsoft Corporation",
+                "target": "Microsoft Research",
+                "type": "HAS_DIVISION",
+                "properties": {}
+            }
+        ],
+        "source": {
+            "source": "data\\raw\\Microsoft.txt"
+        }
+    },
+    {
+        "nodes": [
+            {
+                "id": "Nvidia Corporation",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Jensen Huang",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Chris Malachowsky",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Curtis Priem",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Santa Clara, California",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "1993",
+                "type": "Year",
+                "properties": {}
+            },
+            {
+                "id": "Artificial Intelligence",
+                "type": "Field",
+                "properties": {}
+            },
+            {
+                "id": "High-Performance Computing",
+                "type": "Field",
+                "properties": {}
+            },
+            {
+                "id": "Graphics Processing Units",
+                "type": "Technology",
+                "properties": {}
+            },
+            {
+                "id": "Geforce",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Cuda",
+                "type": "Technology",
+                "properties": {}
+            },
+            {
+                "id": "Ai Boom",
+                "type": "Event",
+                "properties": {}
+            },
+            {
+                "id": "2025",
+                "type": "Year",
+                "properties": {}
+            },
+            {
+                "id": "H100 Gpu",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "$1 Trillion",
+                "type": "Valuation",
+                "properties": {}
+            },
+            {
+                "id": "$4 Trillion",
+                "type": "Valuation",
+                "properties": {}
+            },
+            {
+                "id": "Deep Learning",
+                "type": "Field",
+                "properties": {}
+            },
+            {
+                "id": "Tesla, Inc.",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Worldwide",
+                "type": "Area served",
+                "properties": {}
+            },
+            {
+                "id": "2024",
+                "type": "Year",
+                "properties": {}
+            },
+            {
+                "id": "$130.5 Billion",
+                "type": "Revenue",
+                "properties": {}
+            },
+            {
+                "id": "$72.9 Billion",
+                "type": "Net income",
+                "properties": {}
+            },
+            {
+                "id": "$81.5 Billion",
+                "type": "Operating income",
+                "properties": {}
+            },
+            {
+                "id": "$111.6 Billion",
+                "type": "Total assets",
+                "properties": {}
+            },
+            {
+                "id": "$79.3 Billion",
+                "type": "Total equity",
+                "properties": {}
+            },
+            {
+                "id": "36,000",
+                "type": "Employees",
+                "properties": {}
+            },
+            {
+                "id": "Bright Computing",
+                "type": "Subsidiary",
+                "properties": {}
+            },
+            {
+                "id": "Cumulus Networks",
+                "type": "Subsidiary",
+                "properties": {}
+            },
+            {
+                "id": "Deepmap",
+                "type": "Subsidiary",
+                "properties": {}
+            },
+            {
+                "id": "Mellanox Technologies",
+                "type": "Subsidiary",
+                "properties": {}
+            },
+            {
+                "id": "Mental Images",
+                "type": "Subsidiary",
+                "properties": {}
+            },
+            {
+                "id": "2023",
+                "type": "Year",
+                "properties": {}
+            },
+            {
+                "id": "Nvidia Corporation",
+                "type": "Organization",
+                "properties": {}
+            }
+        ],
+        "relationships": [
+            {
+                "source": "Nvidia Corporation",
+                "target": "Jensen Huang",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Chris Malachowsky",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Curtis Priem",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Santa Clara, California",
+                "type": "HEADQUARTERED_IN",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "1993",
+                "type": "FOUNDED_ON",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Artificial Intelligence",
+                "type": "INVOLVED_IN",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "High-Performance Computing",
+                "type": "INVOLVED_IN",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Graphics Processing Units",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Geforce",
+                "type": "PRODUCTS",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Cuda",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Ai Boom",
+                "type": "INFLUENCED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "2025",
+                "type": "YEAR",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "H100 Gpu",
+                "type": "PRODUCTS",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$1 Trillion",
+                "type": "VALUATION",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$4 Trillion",
+                "type": "VALUATION",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Deep Learning",
+                "type": "INVOLVED_IN",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Tesla, Inc.",
+                "type": "PROVIDED_CHIP_FOR",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Worldwide",
+                "type": "SERVES",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "2024",
+                "type": "YEAR",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$130.5 Billion",
+                "type": "REVENUE",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$72.9 Billion",
+                "type": "NET_INCOME",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$81.5 Billion",
+                "type": "OPERATING_INCOME",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$111.6 Billion",
+                "type": "TOTAL_ASSETS",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "$79.3 Billion",
+                "type": "TOTAL_EQUITY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "36,000",
+                "type": "EMPLOYEES",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Bright Computing",
+                "type": "HAS_SUBSIDIARY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Cumulus Networks",
+                "type": "HAS_SUBSIDIARY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Deepmap",
+                "type": "HAS_SUBSIDIARY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Mellanox Technologies",
+                "type": "HAS_SUBSIDIARY",
+                "properties": {}
+            },
+            {
+                "source": "Nvidia Corporation",
+                "target": "Mental Images",
+                "type": "HAS_SUBSIDIARY",
+                "properties": {}
+            }
+        ],
+        "source": {
+            "source": "data\\raw\\Nvidia.txt"
+        }
+    },
+    {
+        "nodes": [
+            {
+                "id": "Spacex",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Elon Musk",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Starbase",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Texas",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Falcon 1",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Falcon 9",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Falcon Heavy",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Dragon 1",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Dragon 2",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Starlink",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Starshield",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Swarm Technologies",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Pioneer Aerospace",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Nasa",
+                "type": "Organization",
+                "properties": {}
+            },
+            {
+                "id": "U.S. Armed Forces",
+                "type": "Organization",
+                "properties": {}
+            },
+            {
+                "id": "Commercial Resupply Services",
+                "type": "Program",
+                "properties": {}
+            },
+            {
+                "id": "Cots",
+                "type": "Program",
+                "properties": {}
+            }
+        ],
+        "relationships": [
+            {
+                "source": "Elon Musk",
+                "target": "Spacex",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Starbase",
+                "type": "HEADQUARTERED_AT",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Nasa",
+                "type": "CONTRACTS_WITH",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "U.S. Armed Forces",
+                "type": "CONTRACTS_WITH",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Commercial Resupply Services",
+                "type": "PARTICIPATES_IN",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Cots",
+                "type": "PARTICIPATES_IN",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Falcon 1",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Falcon 9",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Falcon Heavy",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Dragon 1",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Dragon 2",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Starlink",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Starshield",
+                "type": "DEVELOPS",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Swarm Technologies",
+                "type": "ACQUIRES",
+                "properties": {}
+            },
+            {
+                "source": "Spacex",
+                "target": "Pioneer Aerospace",
+                "type": "ACQUIRES",
+                "properties": {}
+            },
+            {
+                "source": "Elon Musk",
+                "target": "Gwynne Shotwell",
+                "type": "CO_WORKS_WITH",
+                "properties": {}
+            }
+        ],
+        "source": {
+            "source": "data\\raw\\SpaceX.txt"
+        }
+    },
+    {
+        "nodes": [
+            {
+                "id": "Tesla, Inc.",
+                "type": "Company",
+                "properties": {}
+            },
+            {
+                "id": "Martin Eberhard",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Marc Tarpenning",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Nikola Tesla",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Elon Musk",
+                "type": "Person",
+                "properties": {}
+            },
+            {
+                "id": "Austin, Texas",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Roadster",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Model S",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Model X",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Model 3",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Model Y",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Tesla Semi",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Cybertruck",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Gigafactory Texas",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Gigafactory New York",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Gigafactory Berlin",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Gigafactory Shanghai",
+                "type": "Location",
+                "properties": {}
+            },
+            {
+                "id": "Tesla Energy",
+                "type": "Subsidiary",
+                "properties": {}
+            },
+            {
+                "id": "Powerwall",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Megapack",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Tesla Insurance Services, Inc.",
+                "type": "Service",
+                "properties": {}
+            },
+            {
+                "id": "Supercharger Network",
+                "type": "Service",
+                "properties": {}
+            },
+            {
+                "id": "Destination Chargers",
+                "type": "Service",
+                "properties": {}
+            },
+            {
+                "id": "Autopilot",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Full Self-Driving",
+                "type": "Product",
+                "properties": {}
+            },
+            {
+                "id": "Tesla Electric",
+                "type": "Service",
+                "properties": {}
+            },
+            {
+                "id": "India",
+                "type": "Location",
+                "properties": {}
+            }
+        ],
+        "relationships": [
+            {
+                "source": "Tesla, Inc.",
+                "target": "Austin, Texas",
+                "type": "HEADQUARTERED_IN",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Martin Eberhard",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Marc Tarpenning",
+                "type": "FOUNDED_BY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Nikola Tesla",
+                "type": "NAMED_AFTER",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Elon Musk",
+                "type": "CHAIRMAN",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Roadster",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Model S",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Model X",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Model 3",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Model Y",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Tesla Semi",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Cybertruck",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Gigafactory Texas",
+                "type": "HAS_FACTORY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Gigafactory New York",
+                "type": "HAS_FACTORY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Gigafactory Berlin",
+                "type": "HAS_FACTORY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Gigafactory Shanghai",
+                "type": "HAS_FACTORY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Tesla Energy",
+                "type": "HAS_SUBSIDIARY",
+                "properties": {}
+            },
+            {
+                "source": "Tesla Energy",
+                "target": "Powerwall",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla Energy",
+                "target": "Megapack",
+                "type": "PRODUCED",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Tesla Insurance Services, Inc.",
+                "type": "OFFERS",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Supercharger Network",
+                "type": "OPERATES",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Destination Chargers",
+                "type": "OPERATES",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Autopilot",
+                "type": "OFFERS",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Full Self-Driving",
+                "type": "OFFERS",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "Tesla Electric",
+                "type": "OFFERS",
+                "properties": {}
+            },
+            {
+                "source": "Tesla, Inc.",
+                "target": "India",
+                "type": "EXPANDS_TO",
+                "properties": {}
+            }
+        ],
+        "source": {
+            "source": "data\\raw\\Tesla.txt"
+        }
+    }
+]
