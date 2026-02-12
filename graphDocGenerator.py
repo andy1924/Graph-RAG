@@ -1,3 +1,5 @@
+#DELETE PREPROCESSED DATA IF IT ALREADY EXITS.
+#AND SHIT THIS FILE IS EXPENSIVE TO RUN TOH BAR BAR MAT KARNA
 import os
 import json
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
@@ -25,13 +27,7 @@ documents = loader.load()
 if len(documents) == 0:
     print(f"File location is empty. Add data first.")
 else:
-    # Initializing NEO4J (Optional if you're just transforming, but kept for your workflow)
-    graph = Neo4jGraph(
-        url=os.getenv("NEO4J_URI"),
-        username=os.getenv("NEO4J_USERNAME"),
-        password=os.getenv("NEO4J_PASSWORD")
-    )
-
+    print("Starting Graph Generator.")
     llm = ChatOpenAI(model='gpt-4o-mini')
     llmTransformer = LLMGraphTransformer(llm=llm)
 
