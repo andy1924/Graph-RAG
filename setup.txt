@@ -1,0 +1,1 @@
+Make sure you have Tessart and Poppler installed for windows
