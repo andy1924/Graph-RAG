@@ -392,11 +392,11 @@ For research contributions:
 If you use GraphRAG in your research, please cite:
 
 ```bibtex
-@software{graphrag2025,
+@software{Graph-RAG 2026,
   title={GraphRAG: Efficient Multi-Modal Graph-Based RAG},
-  author={Your Team},
-  year={2025},
-  url={https://github.com/your-repo/graphrag}
+  author={Arnav Deshpande,Sarvesh Nimbalkar,Aadi Rawat,Dhruv Gadia},
+  year={2026},
+  url={https://github.com/andy1924/Graph-RAG}
 }
 ```
 
@@ -420,7 +420,7 @@ MIT License - See LICENSE file for details
 ## Support
 
 For questions and issues:
-- 📧 Email: your-email@example.com
+- 📧 Email: deshpandearnavn@gmail.com
 - 🐛 GitHub Issues: [Create an issue](https://github.com/your-repo/graphrag/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/your-repo/graphrag/discussions)
 
