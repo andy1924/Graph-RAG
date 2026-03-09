@@ -1,3 +1,11 @@
+---
+**Authors**: Arnav Deshpande, Sarvesh Nimbalkar, Aadi Rawat, Dhruv Gadia  
+**Institution**: Mukesh Patel School of Technology and Management, NMIMS, Mumbai  
+**License**: MIT License  
+**Contact**: deshpandearnavn@gmail.com  
+**Last Updated**: March 2026  
+---
+
 # GraphRAG: Efficient Multi-Modal Graph-Based Retrieval-Augmented Generation
 
 ## Overview
@@ -426,4 +434,4 @@ For questions and issues:
 
 ---
 
-**Last Updated**: March 2025
+**Last Updated**: March 2026

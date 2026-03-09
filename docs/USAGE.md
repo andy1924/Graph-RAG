@@ -1,3 +1,11 @@
+---
+**Authors**: Arnav Deshpande, Sarvesh Nimbalkar, Aadi Rawat, Dhruv Gadia  
+**Institution**: Mukesh Patel School of Technology and Management, NMIMS, Mumbai  
+**License**: MIT License  
+**Contact**: deshpandearnavn@gmail.com  
+**Last Updated**: March 2026  
+---
+
 # GraphRAG - Usage Guide
 
 This guide covers practical usage of the GraphRAG system.

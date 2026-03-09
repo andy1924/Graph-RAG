@@ -1,3 +1,11 @@
+---
+**Authors**: Arnav Deshpande, Sarvesh Nimbalkar, Aadi Rawat, Dhruv Gadia  
+**Institution**: Mukesh Patel School of Technology and Management, NMIMS, Mumbai  
+**License**: MIT License  
+**Contact**: deshpandearnavn@gmail.com  
+**Last Updated**: March 2026  
+---
+
 # Quick Start Guide - GraphRAG System
 
 A research-grade Graph-based Retrieval-Augmented Generation system for question answering over structured knowledge graphs with full source attribution.
