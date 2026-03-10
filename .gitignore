@@ -1,6 +1,7 @@
 #Project Specific
 db/
 .idea/
+KNOWLADEGE.md
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
