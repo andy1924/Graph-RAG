@@ -10,7 +10,7 @@ __version__ = "0.1.0"
 __author__ = "Research Team"
 
 from .ingestion import graph_generator, multimodal_ingestion
-from .retrieval import graph_retriever, multimodal_retriever
+from .retrieval import GraphRetriever, SemanticGraphRetriever, MultimodalGraphRetriever
 from .evaluation import metrics
 
 __all__ = [

@@ -17,6 +17,7 @@ from graphrag.config import config
 from graphrag.retrieval import GraphRetriever, SemanticGraphRetriever, MultimodalGraphRetriever
 from graphrag.evaluation import EvaluationPipeline
 from graphrag.utils import ExperimentLogger
+from graphrag.utils.data_retriever import get_relevant_items_mapping, QUESTION_KEYWORDS_MAPPING
 
 logger = ExperimentLogger("comprehensive_eval")
 
@@ -26,29 +27,30 @@ class BenchmarkDataset:
     
     def __init__(self):
         self.questions = [
-            "What are the main characteristics of entity A?",
-            "How does entity B relate to entity C?",
-            "What is the historical significance of X?",
-            "Compare the features of Y and Z.",
-            "What is the impact of process P on entity E?"
+            "What are the main characteristics of the Transformer architecture?",
+            "How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
+            "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
+            "Compare the computational complexity per layer of self-attention layers and recurrent layers.",
+            "What is the impact of masking in the decoder's self-attention sub-layer?"
         ]
         
         self.references = [
-            "Entity A is characterized by properties: P1, P2, P3, found in documents D1.",
-            "Entity B connects to C through relationship RELATED_TO with properties P1.",
-            "X has historical significance due to event E1 in time period T1.",
-            "Y has features F1, F2 while Z has features F1, F3, F4.",
-            "Process P impacts entity E in ways: I1, I2, as documented in source S1."
+            "The Transformer is a network architecture based solely on attention mechanisms, dispensing with recurrence and convolutions entirely, and using stacked self-attention and point-wise, fully connected layers. [cite: 17, 78]",
+            "Multi-Head Attention connects to Scaled Dot-Product Attention by linearly projecting queries, keys, and values h times, and performing the scaled dot-product attention function in parallel on each projected version. [cite: 126, 127]",
+            "The Transformer model achieved a new state-of-the-art BLEU score of 28.4 on the WMT 2014 English-to-German translation task, improving over existing best results by over 2 BLEU. [cite: 19]",
+            "Self-attention layers have a complexity of O(n^2 * d) per layer, while recurrent layers have a complexity of O(n * d^2), making self-attention faster when sequence length n is smaller than representation dimensionality d. [cite: 163, 187, 188, 189]",
+            "Masking impacts the decoder by preventing positions from attending to subsequent positions, ensuring that predictions for position i can depend only on the known outputs at positions less than i, preserving the auto-regressive property. [cite: 88, 89]"
         ]
         
-        # Simulated retrieved items
-        self.relevant_items = [
-            ["item1", "item2", "item3", "item4", "item5"],
-            ["item2", "item3", "item6"],
-            ["item7", "item8", "item9", "item10"],
-            ["item4", "item11", "item12"],
-            ["item6", "item7", "item13", "item14", "item15"]
-        ]
+        # Retrieve relevant items from actual graph data
+        print("\n" + "=" * 60)
+        print("Loading relevant items from graph data...")
+        print("=" * 60)
+        self.relevant_items = get_relevant_items_mapping(
+            self.questions,
+            question_keywords=QUESTION_KEYWORDS_MAPPING
+        )
+        print("=" * 60 + "\n")
     
     def __len__(self):
         return len(self.questions)
@@ -105,11 +107,11 @@ def run_baseline_experiment(
                 "response_time": response_time
             })
             
-            logger.get_logger().info(f"✓ F1: {metrics.retrieval_f1:.3f}, "
+            logger.get_logger().info(f"[+] F1: {metrics.retrieval_f1:.3f}, "
                                     f"Hallucination: {metrics.hallucination_rate:.3f}")
         
         except Exception as e:
-            logger.get_logger().error(f"✗ Error processing question {i+1}: {str(e)}")
+            logger.get_logger().error(f"[!] Error processing question {i+1}: {str(e)}")
     
     # Aggregate metrics
     metrics_summary = {
@@ -192,8 +194,8 @@ def run_multimodal_experiment(
                 "image_usage": sum(m.image_modality_usage for m in metrics_list) / len(metrics_list),
             }
             
-            logger.get_logger().info(f"  ✓ Avg F1: {results_by_combo[combo_name]['avg_f1']:.3f}")
-            logger.get_logger().info(f"  ✓ Avg Hallucination: {results_by_combo[combo_name]['avg_hallucination']:.3f}")
+            logger.get_logger().info(f"  [+] Avg F1: {results_by_combo[combo_name]['avg_f1']:.3f}")
+            logger.get_logger().info(f"  [+] Avg Hallucination: {results_by_combo[combo_name]['avg_hallucination']:.3f}")
     
     return results_by_combo
 
@@ -227,7 +229,7 @@ def save_results(
     with open(filepath, 'w') as f:
         json.dump(results, f, indent=4)
     
-    logger.get_logger().info(f"\n✓ Results saved to {filepath}")
+    logger.get_logger().info(f"\n[+] Results saved to {filepath}")
     return filepath
 
 
@@ -274,7 +276,7 @@ def main():
     print(f"  F1 Score: {best_config[1]['avg_f1']:.3f}")
     print(f"  Hallucination Rate: {best_config[1]['avg_hallucination']:.3f}")
     
-    logger.get_logger().info("\n✓ Evaluation complete!")
+    logger.get_logger().info("\n[+] Evaluation complete!")
 
 
 if __name__ == "__main__":

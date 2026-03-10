@@ -1,0 +1,188 @@
+{
+    "timestamp": "2026-03-10 18:12:39",
+    "baseline": {
+        "experiment": "baseline",
+        "num_questions": 5,
+        "avg_f1": 0.7480952380952381,
+        "avg_hallucination_rate": 0.0,
+        "avg_semantic_similarity": 0.7673523187637329,
+        "avg_response_time": 3.337860107421875e-06
+    },
+    "baseline_details": [
+        {
+            "question": "What are the main characteristics of the Transformer architecture?",
+            "answer": "This is a generated answer to: What are the main characteristics of the Transformer architecture?",
+            "metrics": {
+                "experiment_id": "baseline_exp",
+                "timestamp": "2026-03-10T18:09:18.256019",
+                "retrieval_precision": 1.0,
+                "retrieval_recall": 0.6666666666666666,
+                "retrieval_f1": 0.8,
+                "rouge_score": 0.0,
+                "semantic_similarity": 0.5697933435440063,
+                "hallucination_rate": 0.0,
+                "grounded_ratio": 1.0,
+                "context_coverage": 0.0097,
+                "avg_response_time": 2.1457672119140625e-06,
+                "text_modality_usage": 0.0,
+                "table_modality_usage": 0.0,
+                "image_modality_usage": 0.0
+            },
+            "response_time": 2.1457672119140625e-06
+        },
+        {
+            "question": "How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
+            "answer": "This is a generated answer to: How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
+            "metrics": {
+                "experiment_id": "baseline_exp",
+                "timestamp": "2026-03-10T18:09:25.190081",
+                "retrieval_precision": 1.0,
+                "retrieval_recall": 0.5,
+                "retrieval_f1": 0.6666666666666666,
+                "rouge_score": 0.0,
+                "semantic_similarity": 0.8869828581809998,
+                "hallucination_rate": 0.0,
+                "grounded_ratio": 1.0,
+                "context_coverage": 0.01,
+                "avg_response_time": 5.245208740234375e-06,
+                "text_modality_usage": 0.0,
+                "table_modality_usage": 0.0,
+                "image_modality_usage": 0.0
+            },
+            "response_time": 5.245208740234375e-06
+        },
+        {
+            "question": "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
+            "answer": "This is a generated answer to: What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
+            "metrics": {
+                "experiment_id": "baseline_exp",
+                "timestamp": "2026-03-10T18:09:31.965307",
+                "retrieval_precision": 1.0,
+                "retrieval_recall": 0.6,
+                "retrieval_f1": 0.7499999999999999,
+                "rouge_score": 0.0,
+                "semantic_similarity": 0.8459732532501221,
+                "hallucination_rate": 0.0,
+                "grounded_ratio": 1.0,
+                "context_coverage": 0.0144,
+                "avg_response_time": 3.814697265625e-06,
+                "text_modality_usage": 0.0,
+                "table_modality_usage": 0.0,
+                "image_modality_usage": 0.0
+            },
+            "response_time": 3.814697265625e-06
+        },
+        {
+            "question": "Compare the computational complexity per layer of self-attention layers and recurrent layers.",
+            "answer": "This is a generated answer to: Compare the computational complexity per layer of self-attention layers and recurrent layers.",
+            "metrics": {
+                "experiment_id": "baseline_exp",
+                "timestamp": "2026-03-10T18:09:38.644150",
+                "retrieval_precision": 1.0,
+                "retrieval_recall": 0.75,
+                "retrieval_f1": 0.8571428571428571,
+                "rouge_score": 0.0,
+                "semantic_similarity": 0.8380782008171082,
+                "hallucination_rate": 0.0,
+                "grounded_ratio": 1.0,
+                "context_coverage": 0.0124,
+                "avg_response_time": 3.814697265625e-06,
+                "text_modality_usage": 0.0,
+                "table_modality_usage": 0.0,
+                "image_modality_usage": 0.0
+            },
+            "response_time": 3.814697265625e-06
+        },
+        {
+            "question": "What is the impact of masking in the decoder's self-attention sub-layer?",
+            "answer": "This is a generated answer to: What is the impact of masking in the decoder's self-attention sub-layer?",
+            "metrics": {
+                "experiment_id": "baseline_exp",
+                "timestamp": "2026-03-10T18:09:45.305862",
+                "retrieval_precision": 1.0,
+                "retrieval_recall": 0.5,
+                "retrieval_f1": 0.6666666666666666,
+                "rouge_score": 0.0,
+                "semantic_similarity": 0.6959339380264282,
+                "hallucination_rate": 0.0,
+                "grounded_ratio": 1.0,
+                "context_coverage": 0.0103,
+                "avg_response_time": 1.6689300537109375e-06,
+                "text_modality_usage": 0.0,
+                "table_modality_usage": 0.0,
+                "image_modality_usage": 0.0
+            },
+            "response_time": 1.6689300537109375e-06
+        }
+    ],
+    "multimodal_ablation": {
+        "text": {
+            "combination": [
+                "text"
+            ],
+            "num_questions": 5,
+            "avg_f1": 0.7480952380952381,
+            "avg_hallucination": 0.0,
+            "avg_semantic_sim": 0.6657473802566528,
+            "avg_response_time": 3.5762786865234375e-06,
+            "text_usage": 1.0,
+            "table_usage": 0.0,
+            "image_usage": 0.0
+        },
+        "text+table": {
+            "combination": [
+                "text",
+                "table"
+            ],
+            "num_questions": 5,
+            "avg_f1": 0.7480952380952381,
+            "avg_hallucination": 0.0,
+            "avg_semantic_sim": 0.6605539917945862,
+            "avg_response_time": 5.197525024414063e-06,
+            "text_usage": 0.5,
+            "table_usage": 0.5,
+            "image_usage": 0.0
+        },
+        "text+table+image": {
+            "combination": [
+                "text",
+                "table",
+                "image"
+            ],
+            "num_questions": 5,
+            "avg_f1": 0.7480952380952381,
+            "avg_hallucination": 0.0,
+            "avg_semantic_sim": 0.6614990949630737,
+            "avg_response_time": 4.243850708007813e-06,
+            "text_usage": 0.3333333333333333,
+            "table_usage": 0.3333333333333333,
+            "image_usage": 0.3333333333333333
+        },
+        "table": {
+            "combination": [
+                "table"
+            ],
+            "num_questions": 5,
+            "avg_f1": 0.7480952380952381,
+            "avg_hallucination": 0.0,
+            "avg_semantic_sim": 0.6573849320411682,
+            "avg_response_time": 4.863739013671875e-06,
+            "text_usage": 0.5,
+            "table_usage": 0.5,
+            "image_usage": 0.0
+        },
+        "image": {
+            "combination": [
+                "image"
+            ],
+            "num_questions": 5,
+            "avg_f1": 0.7480952380952381,
+            "avg_hallucination": 0.0,
+            "avg_semantic_sim": 0.6705676555633545,
+            "avg_response_time": 7.295608520507813e-06,
+            "text_usage": 0.5,
+            "table_usage": 0.0,
+            "image_usage": 0.5
+        }
+    }
+}
