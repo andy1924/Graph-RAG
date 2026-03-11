@@ -153,7 +153,7 @@ class AnswerQualityMetrics:
         
         scorer = rouge_scorer.RougeScorer(
             ['rouge1', 'rouge2', 'rougeL'],
-            use_stemming=use_stemming
+            use_stemmer=use_stemming
         )
         
         scores = scorer.score(reference, generated)
@@ -260,7 +260,7 @@ class HallucinationDetector:
     def detect_unsupported_claims(
         answer: str,
         context: str,
-        threshold: float = 0.7
+        threshold: float = 0.5
     ) -> Tuple[float, List[str]]:
         """
         Detect claims in answer not supported by context.
@@ -296,11 +296,9 @@ class HallucinationDetector:
             context_embedding = model.encode(context, convert_to_tensor=True)
             
             ungrounded_claims = []
+            evaluated_sentences = [s for s in answer_sentences if len(s.split()) >= 5]
             
-            for sentence in answer_sentences:
-                if len(sentence.split()) < 5:  # Skip short sentences
-                    continue
-                
+            for sentence in evaluated_sentences:
                 sentence_embedding = model.encode(sentence, convert_to_tensor=True)
                 similarity = util.pytorch_cos_sim(
                     sentence_embedding,
@@ -310,7 +308,9 @@ class HallucinationDetector:
                 if similarity < threshold:
                     ungrounded_claims.append(sentence)
             
-            hallucination_rate = len(ungrounded_claims) / len(answer_sentences) if answer_sentences else 0
+            # Denominator is only sentences that were actually evaluated (>= 5 words),
+            # not the full list which includes skipped short sentences.
+            hallucination_rate = len(ungrounded_claims) / len(evaluated_sentences) if evaluated_sentences else 0
             
             return float(hallucination_rate), ungrounded_claims
         

@@ -1,118 +1,123 @@
 {
-    "timestamp": "2026-03-10 18:12:39",
+    "timestamp": "2026-03-11 18:43:35",
     "baseline": {
         "experiment": "baseline",
         "num_questions": 5,
-        "avg_f1": 0.7480952380952381,
-        "avg_hallucination_rate": 0.0,
-        "avg_semantic_similarity": 0.7673523187637329,
-        "avg_response_time": 3.337860107421875e-06
+        "avg_f1": 0.8099999999999999,
+        "avg_hallucination_rate": 0.2,
+        "avg_semantic_similarity": 0.7839044213294983,
+        "avg_response_time": 5.141524982452393
     },
     "baseline_details": [
         {
             "question": "What are the main characteristics of the Transformer architecture?",
-            "answer": "This is a generated answer to: What are the main characteristics of the Transformer architecture?",
+            "answer": "The main characteristics of the Transformer architecture are:\n\n1. It is a transduction model that utilizes attention mechanisms, including self-attention and multi-head attention.\n2. It features an encoder-decoder structure.\n3. It uses embeddings and softmax functions.",
+            "retrieved_context": "The Transformer architecture is a transduction model that utilizes attention mechanisms, including self-attention and multi-head attention, to process input data. It features an encoder-decoder structure and is characterized by the use of embeddings and softmax functions. The architecture has been applied successfully to tasks such as English-to-German and English-to-French translation, as well as English constituency parsing.",
             "metrics": {
                 "experiment_id": "baseline_exp",
-                "timestamp": "2026-03-10T18:09:18.256019",
+                "timestamp": "2026-03-11T18:37:37.328696",
                 "retrieval_precision": 1.0,
                 "retrieval_recall": 0.6666666666666666,
                 "retrieval_f1": 0.8,
-                "rouge_score": 0.0,
-                "semantic_similarity": 0.5697933435440063,
-                "hallucination_rate": 0.0,
-                "grounded_ratio": 1.0,
-                "context_coverage": 0.0097,
-                "avg_response_time": 2.1457672119140625e-06,
+                "rouge_score": 0.34285714285714286,
+                "semantic_similarity": 0.7392608523368835,
+                "hallucination_rate": 1.0,
+                "grounded_ratio": 0.0,
+                "context_coverage": 0.043,
+                "avg_response_time": 5.859687328338623,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 2.1457672119140625e-06
+            "response_time": 5.859687328338623
         },
         {
             "question": "How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
-            "answer": "This is a generated answer to: How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
+            "answer": "Multi-Head Attention relates to Scaled Dot-Product Attention as it employs Scaled Dot-Product Attention as a fundamental component within its framework. Multi-Head Attention consists of multiple attention layers that utilize Scaled Dot-Product Attention to enhance performance in transformer models by allowing the model to attend to different representation subspaces and positions simultaneously.",
+            "retrieved_context": "1. Multi-Head Attention consists of multiple attention layers that allow the model to attend to different representation subspaces and positions simultaneously.\n2. Scaled Dot-Product Attention is a fundamental component of attention mechanisms that utilizes queries, keys, and values, and is employed within the Multi-Head Attention framework to enhance performance in transformer models.",
             "metrics": {
                 "experiment_id": "baseline_exp",
-                "timestamp": "2026-03-10T18:09:25.190081",
+                "timestamp": "2026-03-11T18:37:48.695806",
                 "retrieval_precision": 1.0,
-                "retrieval_recall": 0.5,
-                "retrieval_f1": 0.6666666666666666,
-                "rouge_score": 0.0,
-                "semantic_similarity": 0.8869828581809998,
+                "retrieval_recall": 1.0,
+                "retrieval_f1": 1.0,
+                "rouge_score": 0.37362637362637363,
+                "semantic_similarity": 0.8329709768295288,
                 "hallucination_rate": 0.0,
                 "grounded_ratio": 1.0,
-                "context_coverage": 0.01,
-                "avg_response_time": 5.245208740234375e-06,
+                "context_coverage": 0.0388,
+                "avg_response_time": 4.651430606842041,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 5.245208740234375e-06
+            "response_time": 4.651430606842041
         },
         {
             "question": "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
-            "answer": "This is a generated answer to: What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
+            "answer": "The Transformer model demonstrates significant performance improvements on the WMT 2014 English-to-German translation task by utilizing self-attention mechanisms and an encoder-decoder architecture. It excels in machine translation tasks, effectively handling sequence modeling through these attention mechanisms.",
+            "retrieved_context": "The Transformer model, as proposed in \"Attention Is All You Need,\" applied to the WMT 2014 English-to-German translation task demonstrates significant performance improvements through the use of self-attention mechanisms and an encoder-decoder architecture. This model has been shown to excel in machine translation tasks, leveraging attention mechanisms to effectively handle sequence modeling.",
             "metrics": {
                 "experiment_id": "baseline_exp",
-                "timestamp": "2026-03-10T18:09:31.965307",
+                "timestamp": "2026-03-11T18:38:01.163721",
                 "retrieval_precision": 1.0,
                 "retrieval_recall": 0.6,
                 "retrieval_f1": 0.7499999999999999,
-                "rouge_score": 0.0,
-                "semantic_similarity": 0.8459732532501221,
+                "rouge_score": 0.3733333333333333,
+                "semantic_similarity": 0.7250679731369019,
                 "hallucination_rate": 0.0,
                 "grounded_ratio": 1.0,
-                "context_coverage": 0.0144,
-                "avg_response_time": 3.814697265625e-06,
+                "context_coverage": 0.0395,
+                "avg_response_time": 5.805671215057373,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 3.814697265625e-06
+            "response_time": 5.805671215057373
         },
         {
             "question": "Compare the computational complexity per layer of self-attention layers and recurrent layers.",
-            "answer": "This is a generated answer to: Compare the computational complexity per layer of self-attention layers and recurrent layers.",
+            "answer": "Self-attention layers have a computational complexity of O(N\u00b2 \u00b7 D) per layer. In contrast, the specific computational complexity metrics for recurrent layers are not provided in the given facts, but it is noted that recurrent layers generally exhibit greater computational expense compared to convolutional layers. Therefore, while we can state that self-attention layers have a defined complexity, we cannot provide a specific comparison for recurrent layers based on the available information.",
+            "retrieved_context": "Self-attention layers have a computational complexity of O(N\u00b2 \u00b7 D) per layer, where N is the sequence length and D is the dimensionality of the data. In contrast, recurrent layers generally exhibit greater computational expense compared to convolutional layers, though specific complexity metrics for recurrent layers are not provided in the given facts. Self-attention mechanisms enable parallel processing, while recurrent layers operate sequentially, affecting their efficiency in processing input.",
             "metrics": {
                 "experiment_id": "baseline_exp",
-                "timestamp": "2026-03-10T18:09:38.644150",
+                "timestamp": "2026-03-11T18:38:12.965090",
                 "retrieval_precision": 1.0,
-                "retrieval_recall": 0.75,
-                "retrieval_f1": 0.8571428571428571,
-                "rouge_score": 0.0,
-                "semantic_similarity": 0.8380782008171082,
+                "retrieval_recall": 0.6,
+                "retrieval_f1": 0.7499999999999999,
+                "rouge_score": 0.3620689655172414,
+                "semantic_similarity": 0.870887279510498,
                 "hallucination_rate": 0.0,
                 "grounded_ratio": 1.0,
-                "context_coverage": 0.0124,
-                "avg_response_time": 3.814697265625e-06,
+                "context_coverage": 0.0501,
+                "avg_response_time": 5.023884057998657,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 3.814697265625e-06
+            "response_time": 5.023884057998657
         },
         {
             "question": "What is the impact of masking in the decoder's self-attention sub-layer?",
-            "answer": "This is a generated answer to: What is the impact of masking in the decoder's self-attention sub-layer?",
+            "answer": "The impact of masking in the decoder's self-attention sub-layer is that it prevents the model from attending to future tokens. This ensures that predictions for a token only depend on previously generated tokens, allowing for a sequential generation of outputs while maintaining context from the encoder.",
+            "retrieved_context": "1. Masking in the decoder's self-attention sub-layer prevents the model from attending to future tokens, ensuring that predictions for a token only depend on previously generated tokens.\n2. This mechanism is integral to the multi-head self-attention structure employed by the decoder, allowing for a sequential generation of outputs while maintaining context from the encoder.",
             "metrics": {
                 "experiment_id": "baseline_exp",
-                "timestamp": "2026-03-10T18:09:45.305862",
+                "timestamp": "2026-03-11T18:38:23.983068",
                 "retrieval_precision": 1.0,
-                "retrieval_recall": 0.5,
-                "retrieval_f1": 0.6666666666666666,
-                "rouge_score": 0.0,
-                "semantic_similarity": 0.6959339380264282,
+                "retrieval_recall": 0.6,
+                "retrieval_f1": 0.7499999999999999,
+                "rouge_score": 0.41379310344827586,
+                "semantic_similarity": 0.7513350248336792,
                 "hallucination_rate": 0.0,
                 "grounded_ratio": 1.0,
-                "context_coverage": 0.0103,
-                "avg_response_time": 1.6689300537109375e-06,
+                "context_coverage": 0.0376,
+                "avg_response_time": 4.3669517040252686,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 1.6689300537109375e-06
+            "response_time": 4.3669517040252686
         }
     ],
     "multimodal_ablation": {
@@ -121,10 +126,10 @@
                 "text"
             ],
             "num_questions": 5,
-            "avg_f1": 0.7480952380952381,
-            "avg_hallucination": 0.0,
-            "avg_semantic_sim": 0.6657473802566528,
-            "avg_response_time": 3.5762786865234375e-06,
+            "avg_f1": 0.8099999999999999,
+            "avg_hallucination": 0.2,
+            "avg_semantic_sim": 0.8290267944335937,
+            "avg_response_time": 5.0509809970855715,
             "text_usage": 1.0,
             "table_usage": 0.0,
             "image_usage": 0.0
@@ -135,12 +140,12 @@
                 "table"
             ],
             "num_questions": 5,
-            "avg_f1": 0.7480952380952381,
-            "avg_hallucination": 0.0,
-            "avg_semantic_sim": 0.6605539917945862,
-            "avg_response_time": 5.197525024414063e-06,
-            "text_usage": 0.5,
-            "table_usage": 0.5,
+            "avg_f1": 0.8099999999999999,
+            "avg_hallucination": 0.26666666666666666,
+            "avg_semantic_sim": 0.7998303771018982,
+            "avg_response_time": 6.032982397079468,
+            "text_usage": 0.9740801964966497,
+            "table_usage": 0.02591980350335029,
             "image_usage": 0.0
         },
         "text+table+image": {
@@ -150,25 +155,25 @@
                 "image"
             ],
             "num_questions": 5,
-            "avg_f1": 0.7480952380952381,
-            "avg_hallucination": 0.0,
-            "avg_semantic_sim": 0.6614990949630737,
-            "avg_response_time": 4.243850708007813e-06,
-            "text_usage": 0.3333333333333333,
-            "table_usage": 0.3333333333333333,
-            "image_usage": 0.3333333333333333
+            "avg_f1": 0.8099999999999999,
+            "avg_hallucination": 0.4,
+            "avg_semantic_sim": 0.811219596862793,
+            "avg_response_time": 6.3067831039428714,
+            "text_usage": 0.9450213111754051,
+            "table_usage": 0.02748934441229748,
+            "image_usage": 0.02748934441229748
         },
         "table": {
             "combination": [
                 "table"
             ],
             "num_questions": 5,
-            "avg_f1": 0.7480952380952381,
-            "avg_hallucination": 0.0,
-            "avg_semantic_sim": 0.6573849320411682,
-            "avg_response_time": 4.863739013671875e-06,
-            "text_usage": 0.5,
-            "table_usage": 0.5,
+            "avg_f1": 0.8099999999999999,
+            "avg_hallucination": 0.2,
+            "avg_semantic_sim": 0.8153831958770752,
+            "avg_response_time": 5.637379884719849,
+            "text_usage": 0.0,
+            "table_usage": 1.0,
             "image_usage": 0.0
         },
         "image": {
@@ -176,13 +181,13 @@
                 "image"
             ],
             "num_questions": 5,
-            "avg_f1": 0.7480952380952381,
-            "avg_hallucination": 0.0,
-            "avg_semantic_sim": 0.6705676555633545,
-            "avg_response_time": 7.295608520507813e-06,
-            "text_usage": 0.5,
+            "avg_f1": 0.8099999999999999,
+            "avg_hallucination": 0.26666666666666666,
+            "avg_semantic_sim": 0.8336556196212769,
+            "avg_response_time": 5.479529237747192,
+            "text_usage": 0.0,
             "table_usage": 0.0,
-            "image_usage": 0.5
+            "image_usage": 1.0
         }
     }
 }

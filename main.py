@@ -23,7 +23,7 @@ from typing import Literal
 
 def run_simple_retrieval() -> None:
     """Run the simple retrieval system."""
-    from retrival import main
+    from retrieval import main
     try:
         main()
     except KeyboardInterrupt:
@@ -36,7 +36,7 @@ def run_simple_retrieval() -> None:
 
 def run_multimodal_retrieval() -> None:
     """Run the multimodal retrieval system."""
-    from multiModalGraphRetrival import main
+    from multiModalGraphRetrieval import main
     try:
         main()
     except KeyboardInterrupt:

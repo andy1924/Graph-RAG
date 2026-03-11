@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from graphrag.config import config
-from graphrag.retrieval import GraphRetriever, SemanticGraphRetriever, MultimodalGraphRetriever
+from graphrag.retrieval import GraphRetriever, SemanticGraphRetriever, MultimodalGraphRetriever, get_graph_context, ask_llm_with_context
 from graphrag.evaluation import EvaluationPipeline
 from graphrag.utils import ExperimentLogger
 from graphrag.utils.data_retriever import get_relevant_items_mapping, QUESTION_KEYWORDS_MAPPING
@@ -82,17 +82,23 @@ def run_baseline_experiment(
         logger.get_logger().info(f"\nQuestion {i+1}/{len(dataset)}: {question[:50]}...")
         
         try:
-            # Simulate retrieval (in real scenario, would use actual retriever)
+            # Time the real Neo4j retrieval + LLM answer generation directly,
+            # bypassing the retriever wrapper so the timer captures actual latency.
             start_time = time.time()
-            answer, metadata = retriever.answer_question(question)
+            retrieved_context, sources = get_graph_context(
+                question, retriever.client, retriever.driver, retriever.database
+            )
+            answer = ask_llm_with_context(question, retrieved_context, retriever.client)
             response_time = time.time() - start_time
+
+            assert retrieved_context != answer, "ERROR: retrieved_context must be different from generated answer (circular evaluation detected)"
             
-            # Evaluate
+            # Evaluate with actual retrieved context
             metrics = evaluator.evaluate(
                 question=question,
                 generated_answer=answer,
                 reference_answer=reference,
-                retrieved_context=answer,  # Simplified
+                retrieved_context=retrieved_context,
                 retrieved_items=dataset.relevant_items[i][:3],
                 relevant_items=dataset.relevant_items[i]
             )
@@ -103,24 +109,27 @@ def run_baseline_experiment(
             per_question_results.append({
                 "question": question,
                 "answer": answer,
+                "retrieved_context": retrieved_context,
                 "metrics": metrics.to_dict(),
                 "response_time": response_time
             })
             
             logger.get_logger().info(f"[+] F1: {metrics.retrieval_f1:.3f}, "
-                                    f"Hallucination: {metrics.hallucination_rate:.3f}")
+                                    f"Hallucination: {metrics.hallucination_rate:.3f}, "
+                                    f"Response Time: {response_time:.4f}s")
         
         except Exception as e:
             logger.get_logger().error(f"[!] Error processing question {i+1}: {str(e)}")
     
     # Aggregate metrics
+    n = len(all_metrics)
     metrics_summary = {
         "experiment": "baseline",
         "num_questions": len(dataset),
-        "avg_f1": sum(m.retrieval_f1 for m in all_metrics) / len(all_metrics),
-        "avg_hallucination_rate": sum(m.hallucination_rate for m in all_metrics) / len(all_metrics),
-        "avg_semantic_similarity": sum(m.semantic_similarity for m in all_metrics) / len(all_metrics),
-        "avg_response_time": sum(m.avg_response_time for m in all_metrics) / len(all_metrics),
+        "avg_f1": sum(m.retrieval_f1 for m in all_metrics) / n if n else 0.0,
+        "avg_hallucination_rate": sum(m.hallucination_rate for m in all_metrics) / n if n else 0.0,
+        "avg_semantic_similarity": sum(m.semantic_similarity for m in all_metrics) / n if n else 0.0,
+        "avg_response_time": sum(m.avg_response_time for m in all_metrics) / n if n else 0.0,
     }
     
     return metrics_summary, per_question_results
@@ -163,20 +172,27 @@ def run_multimodal_experiment(
                 )
                 response_time = time.time() - start_time
                 
+                # Extract retrieved context from metadata
+                retrieved_context = metadata.get("context", "")
+                assert retrieved_context != answer, "ERROR: retrieved_context must be different from generated answer (circular evaluation detected)"
+                
                 metrics = evaluator.evaluate(
                     question=question,
                     generated_answer=answer,
                     reference_answer=reference,
-                    retrieved_context=answer,
+                    retrieved_context=retrieved_context,
                     retrieved_items=dataset.relevant_items[i][:3],
                     relevant_items=dataset.relevant_items[i],
-                    multimodal_context={"text": "sample", "table": "sample" if "table" in combo else "", 
-                                       "image": "sample" if "image" in combo else ""}
+                    multimodal_context={"text": retrieved_context if "text" in combo else "", 
+                                       "table": "sample table" if "table" in combo else "", 
+                                       "image": "sample image" if "image" in combo else ""}
                 )
                 
                 metrics.avg_response_time = response_time
                 metrics_list.append(metrics)
             
+            except AssertionError as e:
+                logger.get_logger().error(f"[!] Circular evaluation error: {str(e)}")
             except Exception as e:
                 logger.get_logger().warning(f"Error processing question: {str(e)}")
         

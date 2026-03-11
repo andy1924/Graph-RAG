@@ -161,6 +161,9 @@ def get_relevant_items_mapping(
 
 # Optional mapping for manual control of question-to-keywords
 QUESTION_KEYWORDS_MAPPING = {
-    # Add manual mappings if needed
-    # "What are the main characteristics...": ["Transformer", "architecture", "attention"]
+    "What are the main characteristics of the Transformer architecture?": ["Transformer", "architecture", "attention", "self-attention"],
+    "How does Multi-Head Attention relate to Scaled Dot-Product Attention?": ["Multi-Head Attention", "Scaled Dot-Product", "attention", "projection"],
+    "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?": ["Transformer", "WMT 2014", "translation", "BLEU", "performance"],
+    "Compare the computational complexity per layer of self-attention layers and recurrent layers.": ["self-attention", "recurrent", "complexity", "computational", "O(n)"],
+    "What is the impact of masking in the decoder's self-attention sub-layer?": ["masking", "decoder", "self-attention", "positions", "autoregressive"]
 }
