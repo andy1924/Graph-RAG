@@ -90,7 +90,7 @@ Return ONLY the entity names, comma-separated. If none are relevant, return 'NON
             WHERE n.id = $entity
             OPTIONAL MATCH (n)-[r]-(neighbor)
             RETURN n.id AS source, labels(n)[0] AS source_type, type(r) AS rel, neighbor.id AS target, labels(neighbor)[0] AS target_type
-            LIMIT 10
+            LIMIT 20
             """
             
             for entity in selected_entities:
@@ -107,7 +107,7 @@ Return ONLY the entity names, comma-separated. If none are relevant, return 'NON
             
             # Step D: Summarize relationships into concise facts
             if relations:
-                summary_prompt = f"""Summarize these knowledge graph facts into 2-3 concise, factual statements relevant to answering: "{user_query}"
+                summary_prompt = f"""Summarize these knowledge graph facts into concise, factual statements relevant to answering: "{user_query}"
 Facts:
 {chr(10).join(relations)}
 

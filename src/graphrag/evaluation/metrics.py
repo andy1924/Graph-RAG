@@ -293,7 +293,11 @@ class HallucinationDetector:
             from nltk.tokenize import sent_tokenize
             
             answer_sentences = sent_tokenize(answer)
-            context_embedding = model.encode(context, convert_to_tensor=True)
+            context_sentences = sent_tokenize(context)
+            if not context_sentences:
+                context_sentences = [context] if context.strip() else [""]
+                
+            context_embeddings = model.encode(context_sentences, convert_to_tensor=True)
             
             ungrounded_claims = []
             evaluated_sentences = [s for s in answer_sentences if len(s.split()) >= 5]
@@ -302,8 +306,8 @@ class HallucinationDetector:
                 sentence_embedding = model.encode(sentence, convert_to_tensor=True)
                 similarity = util.pytorch_cos_sim(
                     sentence_embedding,
-                    context_embedding
-                ).item()
+                    context_embeddings
+                ).max().item()
                 
                 if similarity < threshold:
                     ungrounded_claims.append(sentence)
