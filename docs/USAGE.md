@@ -135,12 +135,12 @@ evaluator = EvaluationPipeline(experiment_id="batch_eval")
 all_metrics = []
 
 for question, reference in zip(questions, references):
-    answer, _ = retriever.answer_question(question)
+    answer, metadata = retriever.answer_question(question)
     metrics = evaluator.evaluate(
         question=question,
         generated_answer=answer,
         reference_answer=reference,
-        retrieved_context=answer
+        retrieved_context=metadata.get("context", "")
     )
     all_metrics.append(metrics)
 
@@ -301,13 +301,13 @@ def run_experiment():
     evaluator = EvaluationPipeline(experiment_id="my_exp")
     
     question = "Your test question?"
-    answer, _ = retriever.answer_question(question)
+    answer, metadata = retriever.answer_question(question)
     
     metrics = evaluator.evaluate(
         question=question,
         generated_answer=answer,
         reference_answer="Ground truth",
-        retrieved_context=answer
+        retrieved_context=metadata.get("context", "")
     )
     
     evaluator.save_results(metrics)

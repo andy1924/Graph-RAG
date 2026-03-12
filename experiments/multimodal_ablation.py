@@ -65,17 +65,21 @@ class MultimodalAblationStudy:
                 
                 response_time = time.time() - start_time
                 
+                # Extract retrieved context from metadata
+                retrieved_context = metadata.get("context", "")
+                
                 # Evaluate
                 metrics = evaluator.evaluate(
                     question=question,
                     generated_answer=answer,
                     reference_answer=reference,
-                    retrieved_context=answer,
+                    retrieved_context=retrieved_context,
                     retrieved_items=[],  # Simplified for this study
                     relevant_items=[],
                     multimodal_context={
-                        mod: f"sample_{mod}_content" if mod in modalities else ""
-                        for mod in ["text", "table", "image"]
+                        "text": metadata.get("text_content", ""),
+                        "table": metadata.get("table_content", ""),
+                        "image": metadata.get("image_content", "")
                     }
                 )
                 

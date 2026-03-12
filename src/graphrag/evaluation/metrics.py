@@ -254,8 +254,121 @@ class AnswerQualityMetrics:
 
 
 class HallucinationDetector:
-    """Detects and measures hallucinations in LLM outputs."""
+    """Detects and measures hallucinations in LLM outputs.
     
+    Uses a two-stage pipeline:
+      1. Normalize retrieved context (fix concatenated words, strip layout noise),
+         then check cosine similarity.
+      2. For sentences still flagged, run NLI-based entailment as a second opinion
+         to rescue false positives caused by surface-level text mismatch.
+    """
+
+    # ------------------------------------------------------------------ #
+    # Stage 0 — Context normalisation
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _normalize_context(text: str) -> str:
+        """Clean raw PDF / OCR context so that it is comparable to LLM output.
+
+        Handles:
+        - Concatenated words without spaces (e.g. "TheTransformer" → "The Transformer")
+        - Excessive whitespace / newlines
+        - Common PDF layout noise (isolated page numbers, figure labels, etc.)
+        """
+        import re
+
+        # 1. Insert a space at camelCase boundaries:
+        #    lowercase→Uppercase  (e.g. "theTransformer" → "the Transformer")
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+        #    letter→digit and digit→letter (e.g. "d512" → "d 512", "N6" → "N 6")
+        text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
+        text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
+
+        # 2. Collapse whitespace (multiple spaces, tabs, newlines → single space)
+        text = re.sub(r'\s+', ' ', text)
+
+        # 3. Remove common PDF artefacts
+        #    - Isolated citation markers like "[11]", "[1, 2]"
+        text = re.sub(r'\[\d+(?:,\s*\d+)*\]', '', text)
+        #    - Isolated figure / table labels at line boundaries
+        text = re.sub(r'(?:^|\. )(?:Figure|Table|Fig\.)\s*\d+[.:]\s*', '. ', text)
+
+        # 4. Strip non-ASCII noise but keep common unicode (e.g. ·, ×, −)
+        text = re.sub(r'[^\x20-\x7E\u00B7\u00D7\u2212\u2013\u2014\u2018\u2019\u201C\u201D]', ' ', text)
+
+        # Final whitespace cleanup
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    # ------------------------------------------------------------------ #
+    # Stage 2 — NLI entailment rescue
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _nli_entailment_check(
+        sentences: List[str],
+        context_sentences: List[str],
+        context_embeddings,
+        embedding_model,
+        top_k: int = 5,
+    ) -> List[str]:
+        """
+        Use a cross-encoder NLI model to re-evaluate sentences flagged by
+        cosine similarity.  If the NLI model predicts *entailment* between a
+        flagged sentence and any of its top-k most-similar context sentences,
+        the sentence is considered grounded (rescued from the "hallucinated"
+        list).
+
+        Returns the list of sentences that remain ungrounded after NLI check.
+        """
+        try:
+            from sentence_transformers import util as st_util, CrossEncoder
+        except ImportError:
+            logger.warning("CrossEncoder not available; skipping NLI rescue.")
+            return sentences  # no rescue possible
+
+        if not sentences:
+            return []
+
+        try:
+            nli_model = CrossEncoder("cross-encoder/nli-deberta-v3-small")
+            still_ungrounded: List[str] = []
+
+            # Determine entailment label index from model config
+            entailment_idx = 2  # default fallback
+            if hasattr(nli_model, 'config') and hasattr(nli_model.config, 'label2id'):
+                entailment_idx = nli_model.config.label2id.get('entailment', 
+                                 nli_model.config.label2id.get('ENTAILMENT', 2))
+
+            for sentence in sentences:
+                # Find top-k most similar context sentences for focused NLI
+                sent_emb = embedding_model.encode(sentence, convert_to_tensor=True)
+                sims = st_util.pytorch_cos_sim(sent_emb, context_embeddings)[0]
+                top_k_actual = min(top_k, len(context_sentences))
+                top_indices = sims.topk(top_k_actual).indices.tolist()
+
+                rescued = False
+                for idx in top_indices:
+                    premise = context_sentences[idx]
+                    # NLI models expect (premise, hypothesis) pairs
+                    scores = nli_model.predict([(premise, sentence)])
+                    # scores shape: (1, 3) — label order from model config
+                    label = scores[0].argmax() if hasattr(scores[0], 'argmax') else np.argmax(scores[0])
+                    if label == entailment_idx:
+                        rescued = True
+                        break
+
+                if not rescued:
+                    still_ungrounded.append(sentence)
+
+            return still_ungrounded
+
+        except Exception as e:
+            logger.warning(f"NLI entailment check failed: {str(e)}")
+            return sentences  # fall back to original list
+
+    # ------------------------------------------------------------------ #
+    # Main entry point
+    # ------------------------------------------------------------------ #
     @staticmethod
     def detect_unsupported_claims(
         answer: str,
@@ -264,13 +377,21 @@ class HallucinationDetector:
     ) -> Tuple[float, List[str]]:
         """
         Detect claims in answer not supported by context.
-        Uses semantic similarity to identify potential hallucinations.
-        
+
+        Two-stage pipeline:
+          1. **Normalise + cosine similarity** — clean PDF layout noise from
+             context, then compare each answer sentence to every context
+             sentence via cosine similarity.
+          2. **NLI entailment rescue** — for sentences still flagged in stage 1,
+             use an NLI cross-encoder to check entailment against the top-k
+             most-similar context sentences.  If entailment is predicted the
+             sentence is considered grounded.
+
         Args:
             answer: Generated answer text
-            context: Retrieved context
-            threshold: Similarity threshold for grounding
-        
+            context: Retrieved context (may contain raw PDF noise)
+            threshold: Cosine-similarity threshold for grounding
+
         Returns:
             Tuple of (hallucination_rate, ungrounded_claims)
         """
@@ -279,45 +400,58 @@ class HallucinationDetector:
         except ImportError:
             logger.warning("sentence-transformers not installed.")
             return 0.0, []
-        
+
         try:
             model = SentenceTransformer("all-MiniLM-L6-v2")
-            
-            # Split answer into sentences
+
+            # --- tokeniser setup ---
             import nltk
             try:
-                nltk.data.find('tokenizers/punkt')
+                nltk.data.find('tokenizers/punkt_tab')
             except LookupError:
-                nltk.download('punkt')
-            
+                nltk.download('punkt_tab')
+
             from nltk.tokenize import sent_tokenize
-            
+
+            # ========== Stage 1: Normalise context + cosine similarity =========
+            normalized_context = HallucinationDetector._normalize_context(context)
+
             answer_sentences = sent_tokenize(answer)
-            context_sentences = sent_tokenize(context)
+            context_sentences = sent_tokenize(normalized_context)
             if not context_sentences:
-                context_sentences = [context] if context.strip() else [""]
-                
+                context_sentences = [normalized_context] if normalized_context.strip() else [""]
+
             context_embeddings = model.encode(context_sentences, convert_to_tensor=True)
-            
-            ungrounded_claims = []
+
+            cosine_flagged: List[str] = []
             evaluated_sentences = [s for s in answer_sentences if len(s.split()) >= 5]
-            
+
             for sentence in evaluated_sentences:
                 sentence_embedding = model.encode(sentence, convert_to_tensor=True)
                 similarity = util.pytorch_cos_sim(
                     sentence_embedding,
                     context_embeddings
                 ).max().item()
-                
+
                 if similarity < threshold:
-                    ungrounded_claims.append(sentence)
-            
-            # Denominator is only sentences that were actually evaluated (>= 5 words),
-            # not the full list which includes skipped short sentences.
-            hallucination_rate = len(ungrounded_claims) / len(evaluated_sentences) if evaluated_sentences else 0
-            
+                    cosine_flagged.append(sentence)
+
+            # ========== Stage 2: NLI entailment rescue =========================
+            ungrounded_claims = HallucinationDetector._nli_entailment_check(
+                cosine_flagged,
+                context_sentences,
+                context_embeddings,
+                model,
+            )
+
+            # Denominator is only sentences that were actually evaluated (>= 5 words)
+            hallucination_rate = (
+                len(ungrounded_claims) / len(evaluated_sentences)
+                if evaluated_sentences else 0
+            )
+
             return float(hallucination_rate), ungrounded_claims
-        
+
         except Exception as e:
             logger.warning(f"Hallucination detection failed: {str(e)}")
             return 0.0, []

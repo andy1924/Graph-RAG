@@ -45,9 +45,10 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
         database (str): Target database name in Neo4j
         
     Returns:
-        Tuple[str, List[str]]: 
+        Tuple[str, List[str], List[str]]: 
             - Summarized context facts from the knowledge graph
             - List of source citations showing entities/relationships used
+            - List of unique entity IDs retrieved
             
     Raises:
         Returns error message tuple if graph query fails
@@ -59,7 +60,7 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
             entity_list = [row['n.id'] for row in all_entities]
             
             if not entity_list:
-                return "No entities found in the knowledge graph.", []
+                return "No entities found in the knowledge graph.", [], []
             
             # Show first 150 entities to LLM for selection
             entity_context = ", ".join(entity_list[:150])
@@ -78,13 +79,14 @@ Return ONLY the entity names, comma-separated. If none are relevant, return 'NON
             
             selected_entities_str = select_res.choices[0].message.content.strip()
             if selected_entities_str == "NONE":
-                return "No relevant entities found for this question.", []
+                return "No relevant entities found for this question.", [], []
             
             selected_entities = [e.strip() for e in selected_entities_str.split(",")]
             
             # Step C: Query Neo4j for exact entity matches and their relationships
             relations = []
             sources = []  # Track source citations
+            retrieved_nodes = set()
             cypher = """
             MATCH (n)
             WHERE n.id = $entity
@@ -96,10 +98,14 @@ Return ONLY the entity names, comma-separated. If none are relevant, return 'NON
             for entity in selected_entities:
                 results = list(session.run(cypher, {"entity": entity}))
                 for row in results:
+                    if row.get('source'):
+                        retrieved_nodes.add(row['source'])
+                    
                     if row.get('rel') and row.get('target'):
                         rel_str = f"{row['source']} ({row.get('source_type', 'Unknown')}) {row['rel']} {row['target']} ({row.get('target_type', 'Unknown')})"
                         relations.append(rel_str)
                         sources.append(f"  • {row['source']} -[{row['rel']}]-> {row['target']}")
+                        retrieved_nodes.add(row['target'])
                     elif row.get('source'):
                         rel_str = f"{row['source']} is a {row.get('source_type', 'Unknown')}"
                         relations.append(rel_str)
@@ -121,12 +127,12 @@ Provide ONLY the summary statements, no preamble."""
                     ]
                 )
                 context = summary_res.choices[0].message.content.strip()
-                return context, sources
+                return context, sources, list(retrieved_nodes)
             else:
-                return "Entities found but no relationships.", []
+                return "Entities found but no relationships.", [], []
     
     except Exception as e:
-        return f"Error querying graph: {str(e)}", []
+        return f"Error querying graph: {str(e)}", [], []
 
 
 def ask_llm_with_context(user_query: str, context: str, client: OpenAI) -> str:
@@ -203,17 +209,18 @@ class GraphRetriever:
             
             if self.driver and self.client:
                 # Real Neo4j retrieval
-                context, sources = get_graph_context(question, self.client, self.driver, self.database)
+                context, sources, retrieved_nodes = get_graph_context(question, self.client, self.driver, self.database)
                 answer = ask_llm_with_context(question, context, self.client)
             else:
                 # Mock implementation for testing
+                retrieved_nodes = ["Node A", "Node B"]
                 context = f"Context for question: {question[:50]}... This is retrieved contextual information about the topic."
                 answer = f"Based on the provided context, here is a comprehensive answer to '{question}': The answer draws from available knowledge sources and provides relevant information about the query."
             
             response_time = time.time() - start_time
             
             metadata = {
-                "retrieved_nodes": [],
+                "retrieved_nodes": retrieved_nodes,
                 "context": context,
                 "confidence": 0.85,
                 "response_time": response_time
@@ -269,17 +276,18 @@ class SemanticGraphRetriever:
             
             if self.driver and self.client:
                 # Real Neo4j retrieval
-                context, sources = get_graph_context(question, self.client, self.driver, self.database)
+                context, sources, retrieved_nodes = get_graph_context(question, self.client, self.driver, self.database)
                 answer = ask_llm_with_context(question, context, self.client)
             else:
                 # Mock implementation
+                retrieved_nodes = ["Semantic Node 1", "Semantic Node 2"]
                 context = f"Semantic context about: {question[:50]}... This contains semantically relevant information."
                 answer = f"A semantically-grounded response to '{question}': The semantic retriever provides context-aware answers based on similarity scoring."
             
             response_time = time.time() - start_time
             
             metadata = {
-                "retrieved_nodes": [],
+                "retrieved_nodes": retrieved_nodes,
                 "context": context,
                 "semantic_score": 0.82,
                 "response_time": response_time
@@ -361,10 +369,11 @@ class MultimodalGraphRetriever:
             
             if self.driver and self.client:
                 # Real Neo4j retrieval
-                context, sources = self.get_multimodal_context(question)
+                context, sources, retrieved_nodes = self.get_multimodal_context(question)
                 answer = ask_llm_with_context(question, context, self.client)
             else:
                 # Mock implementation with multimodal simulation
+                retrieved_nodes = ["TextNode", "TableNode", "ImageNode"]
                 context = f"Multimodal context for '{question[:50]}...' with modalities [{', '.join(modalities)}]. Text content, table data, and image descriptions are integrated."
                 answer = f"A multimodal response to '{question}' considering {len(modalities)} modalities: Text analysis, tabular information, and visual content provide comprehensive coverage of the topic."
             
@@ -372,7 +381,7 @@ class MultimodalGraphRetriever:
             
             metadata = {
                 "modalities_used": modalities,
-                "retrieved_nodes": [],
+                "retrieved_nodes": retrieved_nodes,
                 "context": context,
                 "text_content": context if "text" in modalities else "",
                 "table_content": "Mock table data" if "table" in modalities else "",
@@ -386,4 +395,5 @@ class MultimodalGraphRetriever:
     
     def close(self):
         """Close the Neo4j driver connection."""
-        self.driver.close()
+        if self.driver:
+            self.driver.close()

@@ -85,7 +85,7 @@ def run_baseline_experiment(
             # Time the real Neo4j retrieval + LLM answer generation directly,
             # bypassing the retriever wrapper so the timer captures actual latency.
             start_time = time.time()
-            retrieved_context, sources = get_graph_context(
+            retrieved_context, sources, retrieved_nodes = get_graph_context(
                 question, retriever.client, retriever.driver, retriever.database
             )
             answer = ask_llm_with_context(question, retrieved_context, retriever.client)
@@ -99,7 +99,7 @@ def run_baseline_experiment(
                 generated_answer=answer,
                 reference_answer=reference,
                 retrieved_context=retrieved_context,
-                retrieved_items=dataset.relevant_items[i][:3],
+                retrieved_items=retrieved_nodes,
                 relevant_items=dataset.relevant_items[i]
             )
             
@@ -181,11 +181,11 @@ def run_multimodal_experiment(
                     generated_answer=answer,
                     reference_answer=reference,
                     retrieved_context=retrieved_context,
-                    retrieved_items=dataset.relevant_items[i][:3],
+                    retrieved_items=metadata.get("retrieved_nodes", []),
                     relevant_items=dataset.relevant_items[i],
-                    multimodal_context={"text": retrieved_context if "text" in combo else "", 
-                                       "table": "sample table" if "table" in combo else "", 
-                                       "image": "sample image" if "image" in combo else ""}
+                    multimodal_context={"text": metadata.get("text_content", ""), 
+                                       "table": metadata.get("table_content", ""), 
+                                       "image": metadata.get("image_content", "")}
                 )
                 
                 metrics.avg_response_time = response_time
