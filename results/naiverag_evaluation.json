@@ -1,19 +1,19 @@
 {
-    "timestamp": "2026-03-12 13:04:48",
+    "timestamp": "2026-03-12 13:25:38",
     "naiverag_summary": {
         "experiment": "naiverag",
         "num_questions": 5,
         "questions_evaluated": 5,
-        "avg_hallucination_rate": 0.22058823529411767,
-        "avg_grounded_ratio": 0.7794117647058824,
-        "avg_semantic_similarity": 0.8691442370414734,
-        "avg_rouge_score": 0.5027078693384283,
-        "avg_response_time": 4.908840370178223
+        "avg_hallucination_rate": 0.17058823529411765,
+        "avg_grounded_ratio": 0.8294117647058823,
+        "avg_semantic_similarity": 0.8773004889488221,
+        "avg_rouge_score": 0.5065151424670057,
+        "avg_response_time": 3.8175643920898437
     },
     "naiverag_details": [
         {
             "question": "What are the main characteristics of the Transformer architecture?",
-            "answer": "The main characteristics of the Transformer architecture include:\n\n1. **Encoder-Decoder Structure**: The Transformer follows an encoder-decoder structure, where the encoder maps an input sequence to continuous representations, and the decoder generates an output sequence from these representations.\n\n2. **Stacked Layers**: Both the encoder and decoder are composed of a stack of N = 6 identical layers.\n\n3. **Multi-Head Self-Attention Mechanism**: Each layer in the encoder includes a multi-head self-attention mechanism, allowing the model to focus on different parts of the input sequence.\n\n4. **Feed-Forward Networks**: Each layer also contains a position-wise fully connected feed-forward network.\n\n5. **Residual Connections and Layer Normalization**: The architecture employs residual connections around each sub-layer, followed by layer normalization, which helps in stabilizing the training process.\n\n6. **Output Dimension**: All sub-layers and embedding layers produce outputs of dimension d = 512.\n\n7. **No Recurrence or Convolutions**: The Transformer relies entirely on self-attention mechanisms, dispensing with recurrence and convolutions, which allows for more parallelization and reduced training time.\n\n8. **Positional Encoding**: The architecture includes positional encoding to maintain the order of the input and output sequences.\n\nThese characteristics contribute to the Transformer's effectiveness in various tasks, including machine translation and other sequence transduction tasks.",
+            "answer": "The main characteristics of the Transformer architecture include:\n\n1. **Encoder-Decoder Structure**: The Transformer follows an encoder-decoder structure, where the encoder maps an input sequence to continuous representations, and the decoder generates an output sequence from these representations.\n\n2. **Stacked Layers**: Both the encoder and decoder are composed of a stack of N = 6 identical layers.\n\n3. **Self-Attention Mechanism**: Each encoder layer includes a multi-head self-attention mechanism, allowing the model to weigh the importance of different words in the input sequence.\n\n4. **Feed-Forward Networks**: Each layer also contains a position-wise fully connected feed-forward network.\n\n5. **Residual Connections and Layer Normalization**: The architecture employs residual connections around each sub-layer, followed by layer normalization, which helps in stabilizing the training process.\n\n6. **Output Dimension**: All sub-layers and embedding layers produce outputs of dimension d = 512.\n\n7. **No Recurrence or Convolutions**: The Transformer relies entirely on self-attention mechanisms, dispensing with recurrence and convolutions, which allows for more parallelization and reduced training time.\n\n8. **Positional Encoding**: The model incorporates positional encoding to maintain the order of the input and output sequences.\n\nThese characteristics contribute to the Transformer's effectiveness in various tasks, including machine translation and other natural language processing applications.",
             "retrieved_context": "Figure1: TheTransformer-modelarchitecture.\nTheTransformerfollowsthisoverallarchitectureusingstackedself-attentionandpoint-wise,fully\nconnectedlayersforboththeencoderanddecoder,shownintheleftandrighthalvesofFigure1,\nrespectively.\n3.1 EncoderandDecoderStacks\nEncoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two\nsub-layers. Thefirstisamulti-headself-attentionmechanism,andthesecondisasimple,position-\nwisefullyconnectedfeed-forwardnetwork. Weemployaresidualconnection[11]aroundeachof\nthe two sub-layers, followed by layer normalization [1]. That is, the output of each sub-layer is\nLayerNorm(x+Sublayer(x)),whereSublayer(x)isthefunctionimplementedbythesub-layer\nitself. Tofacilitatetheseresidualconnections,allsub-layersinthemodel,aswellastheembedding\nlayers,produceoutputsofdimensiond =512.\nmodel\nDecoder: ThedecoderisalsocomposedofastackofN =6identicallayers. Inadditiontothetwo\n\n[Image on page 3]: The image illustrates the architecture of a Transformer model, highlighting key components such as the encoder and decoder structures. It features layers for multi-head attention, feed-forward networks, and normalization processes, with indications of positional encoding for both input and output embeddings. Arrows indicate the flow of data through the model, culminating in output probabilities.\n\nusedsuccessfullyinavarietyoftasksincludingreadingcomprehension,abstractivesummarization,\ntextualentailmentandlearningtask-independentsentencerepresentations[4,27,28,22].\nEnd-to-endmemorynetworksarebasedonarecurrentattentionmechanisminsteadofsequence-\nalignedrecurrenceandhavebeenshowntoperformwellonsimple-languagequestionansweringand\nlanguagemodelingtasks[34].\nTo the best of our knowledge, however, the Transformer is the first transduction model relying\nentirelyonself-attentiontocomputerepresentationsofitsinputandoutputwithoutusingsequence-\nalignedRNNsorconvolution. Inthefollowingsections,wewilldescribetheTransformer,motivate\nself-attentionanddiscussitsadvantagesovermodelssuchas[17,18]and[9].\n3 ModelArchitecture\nMostcompetitiveneuralsequencetransductionmodelshaveanencoder-decoderstructure[5,2,35].\nHere, the encoder maps an input sequence of symbol representations (x ,...,x ) to a sequence\n1 n\nof continuous representations z = (z ,...,z ). Given z, the decoder then generates an output\n\npreviousstate-of-the-artmodel. TheTransformer(big)modeltrainedforEnglish-to-Frenchused\ndropoutrateP =0.1,insteadof0.3.\ndrop\nForthebasemodels,weusedasinglemodelobtainedbyaveragingthelast5checkpoints,which\nwerewrittenat10-minuteintervals. Forthebigmodels,weaveragedthelast20checkpoints. We\nusedbeamsearchwithabeamsizeof4andlengthpenalty\u03b1 = 0.6[38]. Thesehyperparameters\nwerechosenafterexperimentationonthedevelopmentset. Wesetthemaximumoutputlengthduring\ninferencetoinputlength+50,butterminateearlywhenpossible[38].\nTable2summarizesourresultsandcomparesourtranslationqualityandtrainingcoststoothermodel\narchitecturesfromtheliterature. Weestimatethenumberoffloatingpointoperationsusedtotraina\nmodelbymultiplyingthetrainingtime,thenumberofGPUsused,andanestimateofthesustained\nsingle-precisionfloating-pointcapacityofeachGPU5.\n6.2 ModelVariations\nToevaluatetheimportanceofdifferentcomponentsoftheTransformer,wevariedourbasemodel\n\nbasedsolelyonattentionmechanisms,dispensingwithrecurrenceandconvolutions\nentirely. Experiments on two machine translation tasks show these models to\nbesuperiorinqualitywhilebeingmoreparallelizableandrequiringsignificantly\nless time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-\nto-German translation task, improving over the existing best results, including\nensembles,byover2BLEU.OntheWMT2014English-to-Frenchtranslationtask,\nourmodelestablishesanewsingle-modelstate-of-the-artBLEUscoreof41.8after\ntrainingfor3.5daysoneightGPUs,asmallfractionofthetrainingcostsofthe\nbestmodelsfromtheliterature. WeshowthattheTransformergeneralizeswellto\nothertasksbyapplyingitsuccessfullytoEnglishconstituencyparsingbothwith\nlargeandlimitedtrainingdata.\n\u2217Equalcontribution.Listingorderisrandom.JakobproposedreplacingRNNswithself-attentionandstarted\ntheefforttoevaluatethisidea.Ashish,withIllia,designedandimplementedthefirstTransformermodelsand",
             "sources": [
                 "  \u2022 [text] Attention_Is_All_You_Need_RP.pdf \u2014 page 3",
@@ -24,25 +24,25 @@
             ],
             "metrics": {
                 "experiment_id": "naiverag_exp",
-                "timestamp": "2026-03-12T13:03:57.550351",
-                "retrieval_precision": 1.0,
-                "retrieval_recall": 1.0,
-                "retrieval_f1": 1.0,
-                "rouge_score": 0.19246861924686193,
-                "semantic_similarity": 0.7816823720932007,
+                "timestamp": "2026-03-12T13:24:50.270533",
+                "retrieval_precision": 0.0,
+                "retrieval_recall": 0.0,
+                "retrieval_f1": 0.0,
+                "rouge_score": 0.19327731092436973,
+                "semantic_similarity": 0.7864863872528076,
                 "hallucination_rate": 0.35294117647058826,
                 "grounded_ratio": 0.6470588235294117,
                 "context_coverage": 0.4205,
-                "avg_response_time": 11.156282663345337,
+                "avg_response_time": 7.650797128677368,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 11.156282663345337
+            "response_time": 7.650797128677368
         },
         {
             "question": "How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
-            "answer": "Multi-Head Attention consists of several attention layers running in parallel, and it builds upon the Scaled Dot-Product Attention mechanism. In Multi-Head Attention, instead of performing a single attention function with d-dimensional keys, values, and queries, the model linearly projects the queries, keys, and values multiple times (h times) with different learned projections. Each of these projections is processed using the Scaled Dot-Product Attention, and the outputs are concatenated and projected again to produce the final values. This allows the model to jointly attend to information from different representation subspaces at different positions, enhancing its ability to capture various aspects of the input data.",
+            "answer": "Multi-Head Attention consists of several attention layers running in parallel, and it utilizes the Scaled Dot-Product Attention as its core mechanism. In Multi-Head Attention, the queries, keys, and values are linearly projected multiple times with different learned projections, allowing the model to jointly attend to information from different representation subspaces at different positions. Each attention head in Multi-Head Attention computes the attention using the Scaled Dot-Product Attention, and the outputs from these heads are concatenated and projected to produce the final values.",
             "retrieved_context": "ScaledDot-ProductAttention Multi-HeadAttention\nFigure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several\nattentionlayersrunninginparallel.\nofthevalues,wheretheweightassignedtoeachvalueiscomputedbyacompatibilityfunctionofthe\nquerywiththecorrespondingkey.\n3.2.1 ScaledDot-ProductAttention\nWecallourparticularattention\"ScaledDot-ProductAttention\"(Figure2). Theinputconsistsof\nqueriesandkeysofdimensiond\nk\n,a\u221andvaluesofdimensiond\nv\n. Wecomputethedotproductsofthe\nquerywithallkeys,divideeachby d ,andapplyasoftmaxfunctiontoobtaintheweightsonthe\nk\nvalues.\nInpractice,wecomputetheattentionfunctiononasetofqueriessimultaneously,packedtogether\nintoamatrixQ. ThekeysandvaluesarealsopackedtogetherintomatricesK andV. Wecompute\nthematrixofoutputsas:\nQKT\nAttention(Q,K,V)=softmax( \u221a )V (1)\nd\nk\nThetwomostcommonlyusedattentionfunctionsareadditiveattention[2],anddot-product(multi-\nplicative)attention. Dot-productattentionisidenticaltoouralgorithm,exceptforthescalingfactor\n\nplicative)attention. Dot-productattentionisidenticaltoouralgorithm,exceptforthescalingfactor\nof \u221a1 . Additiveattentioncomputesthecompatibilityfunctionusingafeed-forwardnetworkwith\ndk\nasinglehiddenlayer. Whilethetwoaresimilarintheoreticalcomplexity,dot-productattentionis\nmuchfasterandmorespace-efficientinpractice,sinceitcanbeimplementedusinghighlyoptimized\nmatrixmultiplicationcode.\nWhileforsmallvaluesofd thetwomechanismsperformsimilarly,additiveattentionoutperforms\nk\ndotproductattentionwithoutscalingforlargervaluesofd [3]. Wesuspectthatforlargevaluesof\nk\nd ,thedotproductsgrowlargeinmagnitude,pushingthesoftmaxfunctionintoregionswhereithas\nk\nextremelysmallgradients4. Tocounteractthiseffect,wescalethedotproductsby \u221a1 .\ndk\n3.2.2 Multi-HeadAttention\nInsteadofperformingasingleattentionfunctionwithd -dimensionalkeys,valuesandqueries,\nmodel\nwefounditbeneficialtolinearlyprojectthequeries,keysandvalueshtimeswithdifferent,learned\n\noutput values. These are concatenated and once again projected, resulting in the final values, as\ndepictedinFigure2.\nMulti-headattentionallowsthemodeltojointlyattendtoinformationfromdifferentrepresentation\nsubspacesatdifferentpositions. Withasingleattentionhead,averaginginhibitsthis.\nMultiHead(Q,K,V)=Concat(head ,...,head )WO\n1 h\nwherehead =Attention(QWQ,KWK,VWV)\ni i i i\nWheretheprojectionsareparametermatricesWQ \u2208Rdmodel\u00d7dk,WK \u2208Rdmodel\u00d7dk,WV \u2208Rdmodel\u00d7dv\ni i i\nandWO \u2208Rhdv\u00d7dmodel.\nIn this work we employ h = 8 parallel attention layers, or heads. For each of these we use\nd =d =d /h=64. Duetothereduceddimensionofeachhead,thetotalcomputationalcost\nk v model\nissimilartothatofsingle-headattentionwithfulldimensionality.\n3.2.3 ApplicationsofAttentioninourModel\nTheTransformerusesmulti-headattentioninthreedifferentways:\n\u2022 In\"encoder-decoderattention\"layers,thequeriescomefromthepreviousdecoderlayer,\nandthememorykeysandvaluescomefromtheoutputoftheencoder. Thisallowsevery\n\n[Image on page 4]: The image depicts a diagram of the scaled dot-product attention mechanism used in neural networks. It shows input components: Value (V), Key (K), and Query (Q), along with linear transformations applied to each. The attention outputs are concatenated and processed to generate the final representation.\n\n[16],ByteNet[18]andConvS2S[9],allofwhichuseconvolutionalneuralnetworksasbasicbuilding\nblock,computinghiddenrepresentationsinparallelforallinputandoutputpositions.Inthesemodels,\nthenumberofoperationsrequiredtorelatesignalsfromtwoarbitraryinputoroutputpositionsgrows\ninthedistancebetweenpositions,linearlyforConvS2SandlogarithmicallyforByteNet. Thismakes\nit more difficult to learn dependencies between distant positions [12]. In the Transformer this is\nreducedtoaconstantnumberofoperations, albeitatthecostofreducedeffectiveresolutiondue\nto averaging attention-weighted positions, an effect we counteract with Multi-Head Attention as\ndescribedinsection3.2.\nSelf-attention,sometimescalledintra-attentionisanattentionmechanismrelatingdifferentpositions\nofasinglesequenceinordertocomputearepresentationofthesequence. Self-attentionhasbeen\nusedsuccessfullyinavarietyoftasksincludingreadingcomprehension,abstractivesummarization,",
             "sources": [
                 "  \u2022 [text] Attention_Is_All_You_Need_RP.pdf \u2014 page 4",
@@ -53,21 +53,21 @@
             ],
             "metrics": {
                 "experiment_id": "naiverag_exp",
-                "timestamp": "2026-03-12T13:04:11.862434",
-                "retrieval_precision": 1.0,
-                "retrieval_recall": 1.0,
-                "retrieval_f1": 1.0,
-                "rouge_score": 0.39160839160839156,
-                "semantic_similarity": 0.872971773147583,
-                "hallucination_rate": 0.25,
-                "grounded_ratio": 0.75,
+                "timestamp": "2026-03-12T13:25:03.106825",
+                "retrieval_precision": 0.0,
+                "retrieval_recall": 0.0,
+                "retrieval_f1": 0.0,
+                "rouge_score": 0.40983606557377056,
+                "semantic_similarity": 0.9089490175247192,
+                "hallucination_rate": 0.0,
+                "grounded_ratio": 1.0,
                 "context_coverage": 0.4152,
-                "avg_response_time": 4.08079981803894,
+                "avg_response_time": 3.277222156524658,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 4.08079981803894
+            "response_time": 3.277222156524658
         },
         {
             "question": "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
@@ -82,21 +82,21 @@
             ],
             "metrics": {
                 "experiment_id": "naiverag_exp",
-                "timestamp": "2026-03-12T13:04:25.955854",
-                "retrieval_precision": 1.0,
-                "retrieval_recall": 1.0,
-                "retrieval_f1": 1.0,
+                "timestamp": "2026-03-12T13:25:16.361649",
+                "retrieval_precision": 0.0,
+                "retrieval_recall": 0.0,
+                "retrieval_f1": 0.0,
                 "rouge_score": 0.577319587628866,
                 "semantic_similarity": 0.9232161641120911,
                 "hallucination_rate": 0.0,
                 "grounded_ratio": 1.0,
                 "context_coverage": 0.4812,
-                "avg_response_time": 3.5717785358428955,
+                "avg_response_time": 3.0676486492156982,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 3.5717785358428955
+            "response_time": 3.0676486492156982
         },
         {
             "question": "Compare the computational complexity per layer of self-attention layers and recurrent layers.",
@@ -111,21 +111,21 @@
             ],
             "metrics": {
                 "experiment_id": "naiverag_exp",
-                "timestamp": "2026-03-12T13:04:35.931490",
-                "retrieval_precision": 1.0,
-                "retrieval_recall": 1.0,
-                "retrieval_f1": 1.0,
+                "timestamp": "2026-03-12T13:25:25.758274",
+                "retrieval_precision": 0.0,
+                "retrieval_recall": 0.0,
+                "retrieval_f1": 0.0,
                 "rouge_score": 0.5569620253164557,
                 "semantic_similarity": 0.9234767556190491,
                 "hallucination_rate": 0.0,
                 "grounded_ratio": 1.0,
                 "context_coverage": 0.4131,
-                "avg_response_time": 2.8975932598114014,
+                "avg_response_time": 2.5131759643554688,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 2.8975932598114014
+            "response_time": 2.5131759643554688
         },
         {
             "question": "What is the impact of masking in the decoder's self-attention sub-layer?",
@@ -140,21 +140,21 @@
             ],
             "metrics": {
                 "experiment_id": "naiverag_exp",
-                "timestamp": "2026-03-12T13:04:48.587901",
-                "retrieval_precision": 1.0,
-                "retrieval_recall": 1.0,
-                "retrieval_f1": 1.0,
+                "timestamp": "2026-03-12T13:25:38.024562",
+                "retrieval_precision": 0.0,
+                "retrieval_recall": 0.0,
+                "retrieval_f1": 0.0,
                 "rouge_score": 0.7951807228915663,
                 "semantic_similarity": 0.8443741202354431,
                 "hallucination_rate": 0.5,
                 "grounded_ratio": 0.5,
                 "context_coverage": 0.4645,
-                "avg_response_time": 2.837747573852539,
+                "avg_response_time": 2.5789780616760254,
                 "text_modality_usage": 0.0,
                 "table_modality_usage": 0.0,
                 "image_modality_usage": 0.0
             },
-            "response_time": 2.837747573852539
+            "response_time": 2.5789780616760254
         }
     ]
 }

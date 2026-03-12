@@ -100,8 +100,6 @@ def run_naiverag_experiment(
                 generated_answer=answer,
                 reference_answer=reference,
                 retrieved_context=retrieved_context,
-                retrieved_items=retrieved_ids,
-                relevant_items=retrieved_ids,  # NaiveRAG has no separate ground-truth item list
             )
 
             metrics.avg_response_time = response_time

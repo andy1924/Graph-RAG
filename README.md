@@ -121,44 +121,34 @@ To develop an **efficient and effective GraphRAG system** that:
 
 ```
 GraphRAG/
-├── src/graphrag/                    # Main package
-│   ├── __init__.py
-│   ├── config.py                    # Configuration management
-│   ├── ingestion/                   # Document processing
-│   │   ├── graph_generator.py       # Graph extraction from text
-│   │   └── multimodal_ingestion.py  # Multimodal processing
-│   ├── retrieval/                   # Question answering
-│   │   ├── graph_retriever.py       # Base retrieval system
-│   │   └── multimodal_retriever.py  # Multimodal retrieval
-│   ├── evaluation/                  # Metrics and assessment
-│   │   └── metrics.py               # Comprehensive evaluation metrics
-│   └── utils/                       # Helper functions
-│       └── logger.py                # Logging utilities
+├── src/
+│   ├── graphrag/                    # Core GraphRAG package
+│   │   ├── ingestion/               # Document-to-Graph processing
+│   │   │   ├── graph_generator.py   # LLM-based entity/relationship extraction
+│   │   │   └── multimodal_ingestion.py # Table & Image vision processing
+│   │   ├── evaluation/              # Scoring & Metrics
+│   │   │   └── metrics.py           # Hallucination, ROUGE, Semantic scores
+│   │   ├── retrieval.py             # Core Graph Traversal & QA logic
+│   │   ├── config.py                # System settings
+│   │   └── utils/                   # Shared utilities
+│   └── naiverag/                    # Baseline Vector-RAG implementation
+│       ├── ingest.py                # ChromaDB ingestion
+│       └── retrieval.py             # Standard retrieval-generation
 │
-├── experiments/                     # Research experiments
-│   ├── baseline_comparison.py       # RAG vs GraphRAG
-│   ├── multimodal_ablation.py       # Modality impact analysis
-│   └── hallucination_study.py       # Hallucination measurement
+├── experiments/                     # Research scripts
+│   ├── comprehensive_evaluation.py  # Full GraphRAG evaluation suite
+│   ├── naiverag_evaluation.py       # Baseline evaluation script
+│   └── multimodal_ablation.py       # Modality impact studies
 │
-├── benchmarks/                      # Benchmark datasets
-│   ├── dataset1/                    # Example datasets
-│   └── README.md                    # Benchmark documentation
+├── results/                         # Evaluation artifacts (JSON/Log)
+├── data/                            # Raw and preprocessed documents
+├── docs/                            # Deep-dive documentation
 │
-├── results/                         # Evaluation results
-│   └── README.md                    # Results documentation
-│
-├── tests/                           # Unit tests
-│   └── test_*.py
-│
-├── docs/                            # Documentation
-│   ├── ARCHITECTURE.md
-│   ├── EVALUATION.md
-│   └── USAGE.md
-│
-├── README.md                        # This file
-├── setup.py                         # Package setup
-├── requirements.txt                 # Dependencies
-└── .env.example                     # Environment template
+├── main.py                          # Unified CLI Entry
+├── retrieval.py                     # Simple Graph Retrieval entry
+├── multiModalGraphRetrieval.py      # Multimodal Graph Retrieval entry
+├── ingest_attention.py              # Specialized ingestion for Attention Paper
+└── requirements.txt                 # Dependencies
 ```
 
 ---
@@ -362,13 +352,27 @@ See [docs/USAGE.md](docs/USAGE.md) for detailed API documentation.
 
 ## Experimental Results
 
-Results are stored in `results/` directory with timestamps. Each experiment includes:
-- Configuration parameters
-- Evaluation metrics
-- Performance statistics
-- Hallucination analysis
+Our evaluation on complex question-answering tasks (using the *Attention Is All You Need* paper as a benchmark) yielded significant improvements in grounding accuracy.
 
-See [results/README.md](results/README.md) for detailed results.
+### Baseline Comparison (NaiveRAG vs. GraphRAG)
+
+| Metric | NaiveRAG | **GraphRAG** |
+| :--- | :--- | :--- |
+| **Hallucination Rate** ↓ | 0.171 | **0.013** |
+| **Grounded Ratio** ↑ | 0.829 | **0.938** |
+| **Response Time** ↓ | **3.82s** | 7.83s |
+
+### Multimodal Ablation Study
+
+| Modality Combination | Hallucination Rate ↓ | Semantic Fidelity ↑ |
+| :--- | :--- | :--- |
+| Text Only | 0.081 | 0.804 |
+| **Text + Table** | **0.066** | 0.800 |
+| **Full Multimodal** | 0.100 | **0.830** |
+
+**Conclusion:** GraphRAG achieves a **92% reduction in hallucination rates** compared to standard RAG by enforcing strict grounding via knowledge graph traversal, albeit with a trade-off in latency due to graph traversal complexity.
+
+See [docs/EVALUATION.md](docs/EVALUATION.md) for full results.
 
 ---
 

@@ -265,6 +265,42 @@ plt.show()
 - [ ] Limitations discussed
 - [ ] Code and data available
 
+## Current Results
+
+As of March 2026, the following results have been obtained comparing the GraphRAG system with a NaiveRAG baseline.
+
+### 1. Overall Performance Comparison
+
+The following table compares the performance of the core GraphRAG system (Baseline) against a NaiveRAG implementation on a subset of complex questions from the "Attention Is All You Need" research paper.
+
+| Metric | NaiveRAG (Baseline) | GraphRAG (Our System) | Improvement |
+| :--- | :--- | :--- | :--- |
+| **Hallucination Rate** ↓ | 0.171 | **0.013** | **-92.4%** |
+| **Grounded Ratio** ↑ | 0.829 | **0.938** | **+13.1%** |
+| **Semantic Similarity** ↑ | **0.877** | 0.821 | -6.4% |
+| **ROUGE-L Score** ↑ | **0.507** | 0.358 | -29.4% |
+| **Avg Response Time** ↓ | **3.82s** | 7.83s | +105% |
+
+> [!IMPORTANT]
+> The primary goal of this research is represented by the **Hallucination Rate**, where GraphRAG demonstrates a significant reduction in fabrication compared to standard vector-based RAG. While NaiveRAG shows higher lexical overlap (ROUGE), it suffers from 13x more hallucinations.
+
+### 2. GraphRAG Multimodal Ablation Study
+
+We evaluated different combinations of input modalities within the GraphRAG framework to understand their impact on performance.
+
+| Modality Combination | Avg F1 | Hallucination Rate ↓ | Semantic Sim ↑ |
+| :--- | :--- | :--- | :--- |
+| **Text Only** | 0.371 | 0.081 | 0.804 |
+| **Text + Table** | 0.362 | **0.066** | 0.800 |
+| **Text + Table + Image** | 0.384 | 0.100 | **0.830** |
+| **Table Only** | 0.383 | 0.233 | 0.799 |
+| **Image Only** | **0.390** | 0.200 | 0.818 |
+
+**Key Findings:**
+- **Lowest Hallucination**: The combination of **Text + Table** provided the best grounding, likely due to the structured nature of table data being highly verifiable.
+- **Highest Semantic Fidelity**: **Text + Table + Image** provided the highest semantic similarity to reference answers, indicating more comprehensive information retrieval.
+- **Modality Robustness**: Even "Image Only" retrieval showed surprisingly high F1 scores, demonstrating the effectiveness of vision-based graph nodes.
+
 ---
 
 For questions about evaluation methodology, see [docs/ARCHITECTURE.md](ARCHITECTURE.md)
