@@ -9,6 +9,67 @@ from typing import List, Dict, Any
 from pathlib import Path
 
 
+# ------------------------------------------------------------------ #
+# Manually annotated ground-truth relevant nodes per benchmark question
+# ------------------------------------------------------------------ #
+# Each list contains the node IDs from graph_data.json that are genuinely
+# relevant to answering the corresponding question.  These were curated
+# by hand to replace noisy keyword matching.
+
+GROUND_TRUTH_RELEVANT_ITEMS: Dict[str, List[str]] = {
+    "What are the main characteristics of the Transformer architecture?": [
+        "Transformer",
+        "Attention Mechanisms",
+        "Self-Attention",
+        "Self-Attention Mechanism",
+        "Encoder",
+        "Decoder",
+        "Encoder-Decoder Structure",
+        "Multi-Head Attention",
+        "Attention Is All You Need",
+    ],
+
+    "How does Multi-Head Attention relate to Scaled Dot-Product Attention?": [
+        "Multi-Head Attention",
+        "Scaled Dot-Product Attention",
+        "Attention Head",
+        "Attention Function",
+        "Multi-Head Self-Attention Mechanism",
+        "Softmax",
+        "Queries",
+        "Keys",
+        "Values",
+    ],
+
+    "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?": [
+        "Transformer",
+        "Transformer (Big)",
+        "Transformer (Base Model)",
+        "Wmt 2014 English-To-German Translation Task",
+        "Wmt 2014 English-German Dataset",
+        "Attention Is All You Need",
+    ],
+
+    "Compare the computational complexity per layer of self-attention layers and recurrent layers.": [
+        "Self-Attention",
+        "Self-Attention Mechanism",
+        "Recurrent",
+        "Recurrent Layers",
+        "Recurrent Neural Networks",
+        "Recurrent Language Models",
+    ],
+
+    "What is the impact of masking in the decoder's self-attention sub-layer?": [
+        "Masking",
+        "Decoder",
+        "Self-Attention",
+        "Self-Attention Mechanism",
+        "Encoder-Decoder Attention",
+        "Multi-Head Self-Attention Mechanism",
+    ],
+}
+
+
 class RelevantItemsRetriever:
     """Retrieves relevant graph nodes for evaluation questions."""
     
@@ -44,11 +105,13 @@ class RelevantItemsRetriever:
                     if isinstance(page, dict) and "nodes" in page:
                         self.all_nodes.extend(page["nodes"])
             
-            # Create ID lookup
+            # Deduplicated ID lookup — keep node with highest type specificity
             for node in self.all_nodes:
-                self.node_by_id[node.get("id")] = node
+                nid = node.get("id")
+                if nid not in self.node_by_id:
+                    self.node_by_id[nid] = node
             
-            print(f"[+] Loaded {len(self.all_nodes)} nodes from graph data")
+            print(f"[+] Loaded {len(self.node_by_id)} unique nodes from graph data")
         
         except FileNotFoundError:
             print(f"[!] Warning: Graph data not found at {self.graph_data_path}")
@@ -59,10 +122,13 @@ class RelevantItemsRetriever:
         self,
         question: str,
         keywords: List[str] = None,
-        num_items: int = 5
+        num_items: int = 10
     ) -> List[str]:
         """
         Get relevant node IDs for a given question.
+        
+        First checks GROUND_TRUTH_RELEVANT_ITEMS for a manual annotation.
+        Falls back to keyword-based scoring if no annotation exists.
         
         Args:
             question: The evaluation question
@@ -70,55 +136,49 @@ class RelevantItemsRetriever:
             num_items: Maximum number of items to return
         
         Returns:
-            List of relevant node IDs
+            List of relevant node IDs (deduplicated)
         """
+        # --- Priority 1: manual ground-truth ---
+        if question in GROUND_TRUTH_RELEVANT_ITEMS:
+            gt_items = GROUND_TRUTH_RELEVANT_ITEMS[question]
+            # Validate that the IDs actually exist in the graph
+            valid = [nid for nid in gt_items if nid in self.node_by_id]
+            if valid:
+                return valid
+        
+        # --- Priority 2: keyword-based search (fallback) ---
         if not keywords:
-            # Extract potential keywords from question
             keywords = self._extract_keywords(question)
         
-        relevant_nodes = []
+        scored: Dict[str, int] = {}  # node_id → best score (dedup)
         
-        # Search for nodes matching keywords
         for node in self.all_nodes:
-            node_id = node.get("id", "").lower()
+            node_id = node.get("id", "")
+            node_id_lower = node_id.lower()
             node_type = node.get("type", "").lower()
             
-            # Score based on keyword matches
             score = 0
             for keyword in keywords:
-                if keyword.lower() in node_id:
-                    score += 2  # Higher weight for ID match
-                if keyword.lower() in node_type:
+                kw = keyword.lower()
+                if kw in node_id_lower:
+                    score += 2
+                if kw in node_type:
                     score += 1
             
             if score > 0:
-                relevant_nodes.append({
-                    "id": node.get("id"),
-                    "type": node.get("type"),
-                    "score": score
-                })
+                # Keep highest score per node ID (deduplication)
+                if node_id not in scored or score > scored[node_id]:
+                    scored[node_id] = score
         
-        # Sort by score and return top N
-        relevant_nodes.sort(key=lambda x: x["score"], reverse=True)
-        result = [node["id"] for node in relevant_nodes[:num_items]]
-        
-        # If not enough results, pad with additional nodes
-        if len(result) < num_items:
-            used_ids = set(result)
-            for node in self.all_nodes:
-                if len(result) >= num_items:
-                    break
-                if node.get("id") not in used_ids:
-                    result.append(node.get("id"))
-        
-        return result[:num_items]
+        # Sort by score descending, return top N
+        ranked = sorted(scored.items(), key=lambda x: x[1], reverse=True)
+        return [nid for nid, _ in ranked[:num_items]]
     
     def _extract_keywords(self, question: str) -> List[str]:
         """
         Extract keywords from a question.
         Simple keyword extraction by splitting on spaces and filtering.
         """
-        # Remove common words
         stop_words = {"what", "how", "is", "the", "of", "in", "to", "and", "or", "a", "an"}
         
         words = question.lower().split()
@@ -159,7 +219,7 @@ def get_relevant_items_mapping(
     return relevant_items_list
 
 
-# Optional mapping for manual control of question-to-keywords
+# Optional mapping for manual control of question-to-keywords (fallback)
 QUESTION_KEYWORDS_MAPPING = {
     "What are the main characteristics of the Transformer architecture?": ["Transformer", "architecture", "attention", "self-attention"],
     "How does Multi-Head Attention relate to Scaled Dot-Product Attention?": ["Multi-Head Attention", "Scaled Dot-Product", "attention", "projection"],

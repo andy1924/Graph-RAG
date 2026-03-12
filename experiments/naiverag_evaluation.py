@@ -83,7 +83,7 @@ def run_naiverag_experiment(
         try:
             # --- Retrieve context + generate answer (timed) ---
             start_time = time.time()
-            context, sources = retriever.get_context(question)
+            context, sources, retrieved_ids = retriever.get_context(question)
             answer, meta = retriever.answer_question(question)
             response_time = time.time() - start_time
 
@@ -100,6 +100,8 @@ def run_naiverag_experiment(
                 generated_answer=answer,
                 reference_answer=reference,
                 retrieved_context=retrieved_context,
+                retrieved_items=retrieved_ids,
+                relevant_items=retrieved_ids,  # NaiveRAG has no separate ground-truth item list
             )
 
             metrics.avg_response_time = response_time

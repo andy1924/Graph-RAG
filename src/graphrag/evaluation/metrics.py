@@ -444,10 +444,12 @@ class HallucinationDetector:
                 model,
             )
 
-            # Denominator is only sentences that were actually evaluated (>= 5 words)
+            # Denominator is ALL answer sentences, including short ones.
+            # Short sentences (< 5 words) are treated as implicitly grounded
+            # (e.g. "Yes.", "The Transformer model.") rather than being excluded.
             hallucination_rate = (
-                len(ungrounded_claims) / len(evaluated_sentences)
-                if evaluated_sentences else 0
+                len(ungrounded_claims) / len(answer_sentences)
+                if answer_sentences else 0
             )
 
             return float(hallucination_rate), ungrounded_claims

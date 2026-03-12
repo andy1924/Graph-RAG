@@ -105,7 +105,7 @@ class NaiveRAGRetriever:
 
     def get_context(
         self, question: str, k: int = None
-    ) -> Tuple[str, List[str]]:
+    ) -> Tuple[str, List[str], List[str]]:
         """
         Retrieve the top-k most relevant chunks for a question.
 
@@ -114,18 +114,29 @@ class NaiveRAGRetriever:
             k:        Number of chunks (overrides config default).
 
         Returns:
-            Tuple of (merged context string, list of source citation strings).
+            Tuple of (merged context string, source citation strings,
+                       list of retrieved chunk IDs).
         """
         k = k or self.cfg.top_k
         docs = self.vectorstore.similarity_search(question, k=k)
 
         context = "\n\n".join(d.page_content for d in docs)
         sources = [
-            f"  • [{d.metadata.get('modality', 'text')}] "
-            f"{d.metadata.get('source', 'unknown')} — page {d.metadata.get('page', '?')}"
+            f"  \u2022 [{d.metadata.get('modality', 'text')}] "
+            f"{d.metadata.get('source', 'unknown')} \u2014 page {d.metadata.get('page', '?')}"
             for d in docs
         ]
-        return context, sources
+        # Collect unique chunk identifiers for F1 evaluation
+        retrieved_ids = []
+        for d in docs:
+            # Prefer explicit 'id' metadata, fall back to source+page combo
+            chunk_id = d.metadata.get(
+                "id",
+                f"{d.metadata.get('source', 'unknown')}_p{d.metadata.get('page', '?')}_{d.metadata.get('modality', 'text')}"
+            )
+            if chunk_id not in retrieved_ids:
+                retrieved_ids.append(chunk_id)
+        return context, sources, retrieved_ids
 
     def answer_question(
         self, question: str
