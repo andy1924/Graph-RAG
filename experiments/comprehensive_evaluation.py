@@ -84,12 +84,12 @@ def run_baseline_experiment(
         try:
             # Time the real Neo4j retrieval + LLM answer generation directly,
             # bypassing the retriever wrapper so the timer captures actual latency.
-            start_time = time.time()
-            retrieved_context, sources, retrieved_nodes = get_graph_context(
+            start = time.perf_counter()
+            retrieved_context, sources, retrieved_nodes, _relations = get_graph_context(
                 question, retriever.client, retriever.driver, retriever.database
             )
             answer = ask_llm_with_context(question, retrieved_context, retriever.client)
-            response_time = time.time() - start_time
+            elapsed = time.perf_counter() - start
 
             assert retrieved_context != answer, "ERROR: retrieved_context must be different from generated answer (circular evaluation detected)"
             
@@ -100,10 +100,10 @@ def run_baseline_experiment(
                 reference_answer=reference,
                 retrieved_context=retrieved_context,
                 retrieved_items=retrieved_nodes,
-                relevant_items=dataset.relevant_items[i]
+                relevant_items=dataset.relevant_items[i],
+                response_time=elapsed
             )
             
-            metrics.avg_response_time = response_time
             all_metrics.append(metrics)
             
             per_question_results.append({
@@ -111,12 +111,12 @@ def run_baseline_experiment(
                 "answer": answer,
                 "retrieved_context": retrieved_context,
                 "metrics": metrics.to_dict(),
-                "response_time": response_time
+                "response_time": elapsed
             })
             
             logger.get_logger().info(f"[+] F1: {metrics.retrieval_f1:.3f}, "
                                     f"Hallucination: {metrics.hallucination_rate:.3f}, "
-                                    f"Response Time: {response_time:.4f}s")
+                                    f"Response Time: {elapsed:.4f}s")
         
         except Exception as e:
             logger.get_logger().error(f"[!] Error processing question {i+1}: {str(e)}")
@@ -165,12 +165,12 @@ def run_multimodal_experiment(
         
         for i, (question, reference) in enumerate(zip(dataset.questions, dataset.references)):
             try:
-                start_time = time.time()
+                start = time.perf_counter()
                 answer, metadata = retriever.answer_with_multimodal_context(
                     question,
                     include_modalities=combo
                 )
-                response_time = time.time() - start_time
+                elapsed = time.perf_counter() - start
                 
                 # Extract retrieved context from metadata
                 retrieved_context = metadata.get("context", "")
@@ -185,10 +185,10 @@ def run_multimodal_experiment(
                     relevant_items=dataset.relevant_items[i],
                     multimodal_context={"text": metadata.get("text_content", ""), 
                                        "table": metadata.get("table_content", ""), 
-                                       "image": metadata.get("image_content", "")}
+                                       "image": metadata.get("image_content", "")},
+                    response_time=elapsed
                 )
                 
-                metrics.avg_response_time = response_time
                 metrics_list.append(metrics)
             
             except AssertionError as e:

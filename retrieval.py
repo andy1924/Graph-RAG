@@ -51,7 +51,7 @@ def main() -> None:
         # 1. Get data from Neo4j
         print("\nSearching graph...")
         database = os.getenv("NEO4J_DATABASE", "neo4j")
-        context, sources = get_graph_context(query, client, driver, database)
+        context, sources, _nodes, _relations = get_graph_context(query, client, driver, database)
 
         if not context:
             print("No matching relationships found in the graph.")

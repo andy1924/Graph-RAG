@@ -34,12 +34,17 @@ def main() -> None:
 
     print(f"Question: {user_query}\n")
     print("Retrieving context from knowledge graph...")
-    context, sources = retriever.get_multimodal_context(user_query)
+    context, sources, text_nodes, table_nodes, image_nodes = retriever.get_multimodal_context(user_query)
 
     if context and sources:
         print("\n[+] SOURCES FROM KNOWLEDGE GRAPH:")
         for source in sources:
             print(source)
+        
+        print(f"\n[+] Node breakdown:")
+        print(f"    Text nodes:  {text_nodes}")
+        print(f"    Table nodes: {table_nodes}")
+        print(f"    Image nodes: {image_nodes}")
         
         print("\n[+] Retrieved Context Summary:")
         print(context)

@@ -594,7 +594,8 @@ class EvaluationPipeline:
         retrieved_context: str,
         retrieved_items: List[str] = None,
         relevant_items: List[str] = None,
-        multimodal_context: Dict[str, str] = None
+        multimodal_context: Dict[str, str] = None,
+        response_time: float = 0.0
     ) -> EvaluationMetrics:
         """
         Run comprehensive evaluation.
@@ -607,6 +608,9 @@ class EvaluationPipeline:
             retrieved_items: List of retrieved item IDs
             relevant_items: List of relevant item IDs
             multimodal_context: Context by modality type
+            response_time: Wall-clock latency in seconds for the
+                retrieval + generation call (measured via
+                time.perf_counter by the caller)
         
         Returns:
             EvaluationMetrics object with all scores
@@ -656,7 +660,7 @@ class EvaluationPipeline:
             hallucination_rate=hallucination_rate,
             grounded_ratio=grounded_ratio,
             context_coverage=context_coverage,
-            avg_response_time=0.0,  # Should be measured externally
+            avg_response_time=response_time,
             text_modality_usage=text_usage,
             table_modality_usage=table_usage,
             image_modality_usage=image_usage,

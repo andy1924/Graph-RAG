@@ -53,6 +53,7 @@ class RetrievalConfig:
     # Graph traversal
     max_hop_distance: int = 3
     relationships_limit: int = 15
+    entity_prefilter_top_k: int = 50
     
     # Ranking
     use_semantic_ranking: bool = True
