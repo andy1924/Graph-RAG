@@ -1,0 +1,28 @@
+{
+    "per_question_rates": {
+        "graphrag": [
+            0.0625,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "naiverag": [
+            0.35294117647058826,
+            0.0,
+            0.0,
+            0.0,
+            0.5
+        ]
+    },
+    "n_questions": 5,
+    "graphrag_mean": 0.0125,
+    "naiverag_mean": 0.17058823529411765,
+    "mean_difference": 0.15808823529411767,
+    "wilcoxon_stat": 0.0,
+    "p_value": 0.5,
+    "ci_lower": 0.0,
+    "ci_upper": 0.35808823529411765,
+    "effect_size": 0.9279446955419519,
+    "interpretation": "GraphRAG has LOWER hallucination; difference is not significant (p > 0.10) with a large effect size (d = +0.9279)."
+}

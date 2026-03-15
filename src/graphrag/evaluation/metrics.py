@@ -46,6 +46,9 @@ class EvaluationMetrics:
     table_modality_usage: float
     image_modality_usage: float
     
+    # Corpus identifier (default for backward compatibility)
+    corpus_id: str = "unknown"
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)

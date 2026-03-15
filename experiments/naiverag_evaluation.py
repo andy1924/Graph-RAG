@@ -6,6 +6,7 @@ with GraphRAG.  Results are saved to a SEPARATE JSON file:
 """
 
 import os
+import re
 import sys
 import time
 import json
@@ -19,6 +20,13 @@ from graphrag.utils import ExperimentLogger
 from naiverag import NaiveRAGRetriever, config as naiverag_config
 
 logger = ExperimentLogger("naiverag_eval")
+
+_CITE_RE = re.compile(r'\s*\[cite:\s*[\d,\s]+\]', re.IGNORECASE)
+
+
+def _strip_cite_markers(text: str) -> str:
+    """Remove all ``[cite: ...]`` markers from *text*."""
+    return _CITE_RE.sub('', text).strip()
 
 
 # ------------------------------------------------------------------ #
@@ -36,13 +44,14 @@ class NaiveRAGBenchmarkDataset:
             "What is the impact of masking in the decoder's self-attention sub-layer?"
         ]
 
-        self.references = [
+        _raw_refs = [
             "The Transformer is a network architecture based solely on attention mechanisms, dispensing with recurrence and convolutions entirely, and using stacked self-attention and point-wise, fully connected layers. [cite: 17, 78]",
             "Multi-Head Attention connects to Scaled Dot-Product Attention by linearly projecting queries, keys, and values h times, and performing the scaled dot-product attention function in parallel on each projected version. [cite: 126, 127]",
             "The Transformer model achieved a new state-of-the-art BLEU score of 28.4 on the WMT 2014 English-to-German translation task, improving over existing best results by over 2 BLEU. [cite: 19]",
             "Self-attention layers have a complexity of O(n^2 * d) per layer, while recurrent layers have a complexity of O(n * d^2), making self-attention faster when sequence length n is smaller than representation dimensionality d. [cite: 163, 187, 188, 189]",
             "Masking impacts the decoder by preventing positions from attending to subsequent positions, ensuring that predictions for position i can depend only on the known outputs at positions less than i, preserving the auto-regressive property. [cite: 88, 89]"
         ]
+        self.references = [_strip_cite_markers(r) for r in _raw_refs]
 
     def __len__(self):
         return len(self.questions)
