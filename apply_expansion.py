@@ -1,22 +1,156 @@
+import re
+from expand_benchmark_defs import *
+
+COMP_EVAL_PATH = r"d:\Graph_RAG\experiments\comprehensive_evaluation.py"
+DATA_RET_PATH = r"d:\Graph_RAG\src\graphrag\utils\data_retriever.py"
+
+# =====================================================================
+# 1. Update comprehensive_evaluation.py
+# =====================================================================
+with open(COMP_EVAL_PATH, "r", encoding="utf-8") as f:
+    eval_content = f.read()
+
+# Helper to generate is-list string
+def format_list(items):
+    lines = ["        return ["]
+    for i in items:
+        clean = i.replace('"', '\\"')
+        lines.append(f'            "{clean}",')
+    lines.append("        ]")
+    return "\n".join(lines)
+
+# Define full class replacements
+attention_class = f"""class AttentionPaperCorpus(Corpus):
+    \"\"\"15 QA pairs about the 'Attention Is All You Need' paper.\"\"\"
+
+    @property
+    def corpus_id(self) -> str:
+        return "attention_paper"
+
+    @property
+    def questions(self) -> List[str]:
+{format_list(ATTENTION_QUESTIONS)}
+
+    @property
+    def references(self) -> List[str]:
+        raw = [
+{",\n".join([f'            "{r.replace('"', '\\"')}"' for r in ATTENTION_REFERENCES])}
+        ]
+        return [_strip_cite_markers(r) for r in raw]
+
+    @property
+    def relevant_items(self) -> List[List[str]]:
+        # Retrieve relevant items from actual graph data
+        print("\\n" + "=" * 60)
+        print("Loading relevant items from graph data (Attention Paper)...")
+        print("=" * 60)
+        items = get_relevant_items_mapping(
+            self.questions,
+            question_keywords=QUESTION_KEYWORDS_MAPPING,
+        )
+        print("=" * 60 + "\\n")
+        return items
 """
-Data retriever module for loading relevant graph nodes based on questions.
-Retrieves actual node IDs from the preprocessed graph data.
+
+tesla_class = f"""class TeslaCorpus(Corpus):
+    \"\"\"15 QA pairs about Tesla, derived from data/raw/Tesla.txt.\"\"\"
+
+    @property
+    def corpus_id(self) -> str:
+        return "tesla"
+
+    @property
+    def questions(self) -> List[str]:
+{format_list(TESLA_QUESTIONS)}
+
+    @property
+    def references(self) -> List[str]:
+{format_list(TESLA_REFERENCES)}
 """
 
-import json
-import os
-from typing import List, Dict, Any
-from pathlib import Path
+google_class = f"""class GoogleCorpus(Corpus):
+    \"\"\"15 QA pairs about Google, derived from data/raw/Google.txt.\"\"\"
 
+    @property
+    def corpus_id(self) -> str:
+        return "google"
 
-# ------------------------------------------------------------------ #
-# Manually annotated ground-truth relevant nodes per benchmark question
-# ------------------------------------------------------------------ #
-# Each list contains the node IDs from graph_data.json that are genuinely
-# relevant to answering the corresponding question.  These were curated
-# by hand to replace noisy keyword matching.
+    @property
+    def questions(self) -> List[str]:
+{format_list(GOOGLE_QUESTIONS)}
 
-GROUND_TRUTH_RELEVANT_ITEMS: Dict[str, List[str]] = {
+    @property
+    def references(self) -> List[str]:
+{format_list(GOOGLE_REFERENCES)}
+"""
+
+spacex_class = f"""class SpaceXCorpus(Corpus):
+    \"\"\"15 QA pairs about SpaceX, derived from data/raw/SpaceX.txt.\"\"\"
+
+    @property
+    def corpus_id(self) -> str:
+        return "spacex"
+
+    @property
+    def questions(self) -> List[str]:
+{format_list(SPACEX_QUESTIONS)}
+
+    @property
+    def references(self) -> List[str]:
+{format_list(SPACEX_REFERENCES)}
+"""
+
+# Replace Attention
+eval_content = re.sub(
+    r"class AttentionPaperCorpus\(Corpus\):.*?def relevant_items\(self\).*?return items\n",
+    attention_class,
+    eval_content,
+    flags=re.DOTALL
+)
+
+# Replace Tesla
+eval_content = re.sub(
+    r"class TeslaCorpus\(Corpus\):.*?\]\n",
+    tesla_class,
+    eval_content,
+    flags=re.DOTALL
+)
+
+# Replace Google
+eval_content = re.sub(
+    r"class GoogleCorpus\(Corpus\):.*?\]\n",
+    google_class,
+    eval_content,
+    flags=re.DOTALL
+)
+
+# Insert SpaceX before get_all_corpora if not present
+if "class SpaceXCorpus" not in eval_content:
+    eval_content = eval_content.replace(
+        "def get_all_corpora()",
+        spacex_class + "\n\ndef get_all_corpora()"
+    )
+
+# Update get_all_corpora
+eval_content = re.sub(
+    r"def get_all_corpora\(\) -> List\[Corpus\]:.*?return \[.*?\]",
+    "def get_all_corpora() -> List[Corpus]:\n    \"\"\"Return all available evaluation corpora.\"\"\"\n    return [\n        AttentionPaperCorpus(),\n        TeslaCorpus(),\n        GoogleCorpus(),\n        SpaceXCorpus(),\n    ]",
+    eval_content,
+    flags=re.DOTALL
+)
+
+with open(COMP_EVAL_PATH, "w", encoding="utf-8") as f:
+    f.write(eval_content)
+print("[+] Updated comprehensive_evaluation.py")
+
+# =====================================================================
+# 2. Update data_retriever.py
+# =====================================================================
+with open(DATA_RET_PATH, "r", encoding="utf-8") as f:
+    ret_content = f.read()
+
+# Replace GROUND_TRUTH_RELEVANT_ITEMS
+gt_replacement = """GROUND_TRUTH_RELEVANT_ITEMS: Dict[str, List[str]] = {
     "What are the main characteristics of the Transformer architecture?": [
         "Transformer", "Attention Mechanisms", "Self-Attention", "Self-Attention Mechanism",
         "Encoder", "Decoder", "Encoder-Decoder Structure", "Multi-Head Attention", "Attention Is All You Need"
@@ -131,160 +265,10 @@ GROUND_TRUTH_RELEVANT_ITEMS: Dict[str, List[str]] = {
     "What was Google's Motorola Mobility acquisition and what happened to it?": [
         "Motorola Mobility", "Acquisition", "Device business"
     ]
-}
+}"""
 
-
-class RelevantItemsRetriever:
-    """Retrieves relevant graph nodes for evaluation questions."""
-    
-    def __init__(self, graph_data_path: str = None):
-        """
-        Initialize the retriever with graph data.
-        
-        Args:
-            graph_data_path: Path to the preprocessed graph_data.json file
-        """
-        if graph_data_path is None:
-            # Default path relative to workspace
-            graph_data_path = os.path.join(
-                os.path.dirname(__file__),
-                '..', '..', '..',
-                'data', 'preprocessed', 'graph_data.json'
-            )
-        
-        self.graph_data_path = graph_data_path
-        self.all_nodes = []
-        self.node_by_id = {}
-        self._load_graph_data()
-    
-    def _load_graph_data(self):
-        """Load and parse the graph data from JSON file."""
-        try:
-            with open(self.graph_data_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            # Flatten nodes from all pages
-            if isinstance(data, list):
-                for page in data:
-                    if isinstance(page, dict) and "nodes" in page:
-                        self.all_nodes.extend(page["nodes"])
-            
-            # Deduplicated ID lookup — keep node with highest type specificity
-            for node in self.all_nodes:
-                nid = node.get("id")
-                if nid not in self.node_by_id:
-                    self.node_by_id[nid] = node
-            
-            print(f"[+] Loaded {len(self.node_by_id)} unique nodes from graph data")
-        
-        except FileNotFoundError:
-            print(f"[!] Warning: Graph data not found at {self.graph_data_path}")
-            self.all_nodes = []
-            self.node_by_id = {}
-    
-    def get_relevant_items_for_question(
-        self,
-        question: str,
-        keywords: List[str] = None,
-        num_items: int = 10
-    ) -> List[str]:
-        """
-        Get relevant node IDs for a given question.
-        
-        First checks GROUND_TRUTH_RELEVANT_ITEMS for a manual annotation.
-        Falls back to keyword-based scoring if no annotation exists.
-        
-        Args:
-            question: The evaluation question
-            keywords: Keywords to search for in node IDs (semantic search)
-            num_items: Maximum number of items to return
-        
-        Returns:
-            List of relevant node IDs (deduplicated)
-        """
-        # --- Priority 1: manual ground-truth ---
-        if question in GROUND_TRUTH_RELEVANT_ITEMS:
-            gt_items = GROUND_TRUTH_RELEVANT_ITEMS[question]
-            # Validate that the IDs actually exist in the graph
-            valid = [nid for nid in gt_items if nid in self.node_by_id]
-            if valid:
-                return valid
-        
-        # --- Priority 2: keyword-based search (fallback) ---
-        if not keywords:
-            keywords = self._extract_keywords(question)
-        
-        scored: Dict[str, int] = {}  # node_id → best score (dedup)
-        
-        for node in self.all_nodes:
-            node_id = node.get("id", "")
-            node_id_lower = node_id.lower()
-            node_type = node.get("type", "").lower()
-            
-            score = 0
-            for keyword in keywords:
-                kw = keyword.lower()
-                if kw in node_id_lower:
-                    score += 2
-                if kw in node_type:
-                    score += 1
-            
-            if score > 0:
-                # Keep highest score per node ID (deduplication)
-                if node_id not in scored or score > scored[node_id]:
-                    scored[node_id] = score
-        
-        # Sort by score descending, return top N
-        ranked = sorted(scored.items(), key=lambda x: x[1], reverse=True)
-        return [nid for nid, _ in ranked[:num_items]]
-    
-    def _extract_keywords(self, question: str) -> List[str]:
-        """
-        Extract keywords from a question.
-        Simple keyword extraction by splitting on spaces and filtering.
-        """
-        stop_words = {"what", "how", "is", "the", "of", "in", "to", "and", "or", "a", "an"}
-        
-        words = question.lower().split()
-        keywords = [w.strip("?.,!") for w in words if w.strip("?.,!") not in stop_words and len(w) > 2]
-        
-        return keywords
-
-
-def get_relevant_items_mapping(
-    questions: List[str],
-    question_keywords: Dict[str, List[str]] = None
-) -> List[List[str]]:
-    """
-    Get relevant items for a list of questions.
-    
-    Args:
-        questions: List of evaluation questions
-        question_keywords: Optional dict mapping question to keywords
-                          If not provided, auto-extract keywords
-    
-    Returns:
-        List of relevant item lists (one per question)
-    """
-    retriever = RelevantItemsRetriever()
-    
-    if not question_keywords:
-        question_keywords = {}
-    
-    relevant_items_list = []
-    
-    for i, question in enumerate(questions):
-        keywords = question_keywords.get(question, None)
-        items = retriever.get_relevant_items_for_question(question, keywords=keywords)
-        relevant_items_list.append(items)
-        print(f"Q{i+1}: {question[:50]}...")
-        print(f"  -> Retrieved {len(items)} relevant items: {items}")
-    
-    return relevant_items_list
-
-
-# Optional mapping for manual control of question-to-keywords (fallback)
-QUESTION_KEYWORDS_MAPPING = {
+# Replace QUESTION_KEYWORDS_MAPPING
+kw_replacement = """QUESTION_KEYWORDS_MAPPING = {
     # Attention Paper
     "What are the main characteristics of the Transformer architecture?": ["Transformer", "architecture", "attention", "self-attention"],
     "How does Multi-Head Attention relate to Scaled Dot-Product Attention?": ["Multi-Head Attention", "Scaled Dot-Product", "attention", "projection"],
@@ -323,4 +307,23 @@ QUESTION_KEYWORDS_MAPPING = {
     "What is SpaceX's Crew Dragon and how did it end US dependence on Russia for ISS access?": ["Crew Dragon", "end dependence", "Russia", "ISS access"],
     "What is SpaceX's long-term vision for Mars colonization?": ["long-term vision", "Mars colonization", "SpaceX"],
     "How does SpaceX generate revenue across its different business lines?": ["generate revenue", "business lines", "SpaceX"]
-}
+}"""
+
+ret_content = re.sub(
+    r"GROUND_TRUTH_RELEVANT_ITEMS: Dict\[str, List\[str\]\] = \{.*?\}\n",
+    gt_replacement + "\n",
+    ret_content,
+    flags=re.DOTALL
+)
+
+ret_content = re.sub(
+    r"QUESTION_KEYWORDS_MAPPING = \{.*?\}\n",
+    kw_replacement + "\n",
+    ret_content,
+    flags=re.DOTALL
+)
+
+with open(DATA_RET_PATH, "w", encoding="utf-8") as f:
+    f.write(ret_content)
+print("[+] Updated data_retriever.py")
+print("[+] Done")

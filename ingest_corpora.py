@@ -57,6 +57,11 @@ CORPORA = {
         "json_path": "data/preprocessed/google_graph_data.json",
         "label": "Google",
     },
+    "spacex": {
+        "txt_path": "data/raw/SpaceX.txt",
+        "json_path": "data/preprocessed/spacex_graph_data.json",
+        "label": "SpaceX",
+    },
 }
 
 # ------------------------------------------------------------------ #
@@ -165,7 +170,7 @@ def main():
     )
     parser.add_argument(
         "--corpus",
-        choices=["tesla", "google", "all"],
+        choices=["tesla", "google", "spacex", "all"],
         default="all",
         help="Which corpus to ingest (default: all)",
     )
