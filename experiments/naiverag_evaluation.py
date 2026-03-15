@@ -162,20 +162,23 @@ def run_naiverag_experiment(
 
 
 # ------------------------------------------------------------------ #
-# Save results
+# Corpus Adapter
 # ------------------------------------------------------------------ #
+from experiments.comprehensive_evaluation import get_all_corpora
+
 def save_results(
-    summary: Dict[str, Any],
-    details: List[Dict[str, Any]],
+    per_corpus_naiverag: Dict[str, Tuple],
     output_dir: str = "results",
 ) -> str:
-    """Save NaiveRAG evaluation results to a separate JSON file."""
+    """Save multi-corpus NaiveRAG evaluation results."""
     os.makedirs(output_dir, exist_ok=True)
 
     results = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "naiverag_summary": summary,
-        "naiverag_details": details,
+        "per_corpus_naiverag": {
+            cid: {"summary": data[0], "details": data[1]}
+            for cid, data in per_corpus_naiverag.items()
+        },
     }
 
     filepath = os.path.join(output_dir, "naiverag_evaluation.json")
@@ -194,25 +197,36 @@ def main():
     logger.get_logger().info("NaiveRAG Comprehensive Evaluation")
     logger.get_logger().info(f"Experiment ID: {logger.experiment_name}")
 
-    dataset = NaiveRAGBenchmarkDataset()
+    corpora = get_all_corpora()
     logger.get_logger().info(
-        f"Loaded benchmark dataset with {len(dataset)} questions"
+        f"Loaded {len(corpora)} corpora: {[c.corpus_id for c in corpora]}"
     )
 
-    summary, details = run_naiverag_experiment(dataset)
+    per_corpus_naiverag: Dict[str, Tuple] = {}
 
-    results_file = save_results(summary, details)
+    for corpus in corpora:
+        logger.get_logger().info(
+            f"\n{'#' * 60}\n"
+            f"# CORPUS: {corpus.corpus_id}  ({len(corpus)} questions)\n"
+            f"{'#' * 60}"
+        )
+
+        summary, details = run_naiverag_experiment(corpus)
+        per_corpus_naiverag[corpus.corpus_id] = (summary, details)
+
+    results_file = save_results(per_corpus_naiverag)
 
     # --- Console summary ---
     print("\n" + "=" * 60)
     print("NAIVERAG EVALUATION SUMMARY")
     print("=" * 60)
-    print(f"\n  Questions evaluated : {summary['questions_evaluated']}/{summary['num_questions']}")
-    print(f"  Hallucination Rate : {summary['avg_hallucination_rate']:.3f}")
-    print(f"  Grounded Ratio     : {summary['avg_grounded_ratio']:.3f}")
-    print(f"  Semantic Similarity: {summary['avg_semantic_similarity']:.3f}")
-    print(f"  ROUGE-1            : {summary['avg_rouge_score']:.3f}")
-    print(f"  Avg Response Time  : {summary['avg_response_time']:.3f}s")
+    for cid, (summary, _) in per_corpus_naiverag.items():
+        print(f"\n--- Corpus: {cid} ---")
+        print(f"  Questions Evaluated : {summary['questions_evaluated']}/{summary['num_questions']}")
+        print(f"  Hallucination Rate  : {summary['avg_hallucination_rate']:.3f}")
+        print(f"  Grounded Ratio      : {summary['avg_grounded_ratio']:.3f}")
+        print(f"  Semantic Similarity : {summary['avg_semantic_similarity']:.3f}")
+        print(f"  ROUGE-1             : {summary['avg_rouge_score']:.3f}")
     print(f"\n  Results saved to: {results_file}")
 
     logger.get_logger().info("\n[+] Evaluation complete!")

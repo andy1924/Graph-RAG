@@ -1,11 +1,11 @@
 {
     "per_question_rates": {
         "graphrag": [
-            0.0625,
+            0.1,
             0.0,
             0.0,
-            0.0,
-            0.0
+            0.3333333333333333,
+            0.5
         ],
         "naiverag": [
             0.35294117647058826,
@@ -16,13 +16,13 @@
         ]
     },
     "n_questions": 5,
-    "graphrag_mean": 0.0125,
+    "graphrag_mean": 0.18666666666666668,
     "naiverag_mean": 0.17058823529411765,
-    "mean_difference": 0.15808823529411767,
-    "wilcoxon_stat": 0.0,
-    "p_value": 0.5,
-    "ci_lower": 0.0,
-    "ci_upper": 0.35808823529411765,
-    "effect_size": 0.9279446955419519,
-    "interpretation": "GraphRAG has LOWER hallucination; difference is not significant (p > 0.10) with a large effect size (d = +0.9279)."
+    "mean_difference": -0.016078431372549017,
+    "wilcoxon_stat": 1.0,
+    "p_value": 1.0,
+    "ci_lower": -0.2,
+    "ci_upper": 0.15176470588235294,
+    "effect_size": -0.06967981624499156,
+    "interpretation": "NaiveRAG has LOWER hallucination; difference is not significant (p > 0.10) with a negligible effect size (d = -0.0697)."
 }

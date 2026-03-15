@@ -216,12 +216,25 @@ def _load_hallucination_rates(filepath: str, details_key: str) -> List[float]:
     with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    details = data.get(details_key, [])
-    rates = [
-        item["metrics"]["hallucination_rate"]
-        for item in details
-        if "metrics" in item and "hallucination_rate" in item["metrics"]
-    ]
+    # For multi-corpus structure:
+    # Details are nested under per_corpus_baseline[corpus_id]["details"]
+    # or per_corpus_naiverag[corpus_id]["details"]
+    rates = []
+    
+    # Check for multi-corpus structure
+    multi_corpus_key = "per_corpus_baseline" if "baseline" in details_key else "per_corpus_naiverag"
+    if multi_corpus_key in data:
+        for corpus_id, corpus_data in data[multi_corpus_key].items():
+            details = corpus_data.get("details", [])
+            for item in details:
+                if "metrics" in item and "hallucination_rate" in item["metrics"]:
+                    rates.append(item["metrics"]["hallucination_rate"])
+    elif details_key in data:
+        details = data.get(details_key, [])
+        for item in details:
+            if "metrics" in item and "hallucination_rate" in item["metrics"]:
+                rates.append(item["metrics"]["hallucination_rate"])
+    
     return rates
 
 
