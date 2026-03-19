@@ -65,21 +65,59 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
     """
     try:
         with driver.session(database=database) as session:
-            # Step A: Get all entity names from graph
-            all_entities = session.run(
-                "MATCH (n) WHERE '__Entity__' IN labels(n) "
-                "AND n.id IS NOT NULL RETURN n.id LIMIT 500"
-            )
-            entity_list = [row['n.id'] for row in all_entities if row['n.id']]
+            # Step A: Semantic-keyword entity pre-filter
+            # Extract keywords from query (words > 3 chars, no stopwords)
+            _stopwords = {
+                'what', 'where', 'when', 'which', 'with', 'from',
+                'this', 'that', 'have', 'does', 'their', 'about',
+                'were', 'been', 'they', 'will', 'would', 'could',
+                'should', 'than', 'then', 'also', 'each', 'into',
+                'over', 'more', 'some', 'such', 'most', 'other',
+            }
+            query_words = [
+                w.strip('?.,:;').lower()
+                for w in user_query.split()
+                if len(w.strip('?.,:;')) > 3
+                and w.strip('?.,:;').lower() not in _stopwords
+            ]
 
-            if not entity_list:
-                # Fallback: langchain may store id differently
-                all_entities = session.run(
-                    "MATCH (n) WHERE n.id IS NOT NULL "
-                    "RETURN n.id LIMIT 500"
+            entity_list = []
+
+            if query_words:
+                # Build case-insensitive CONTAINS filter
+                contains_clauses = " OR ".join(
+                    f"toLower(n.id) CONTAINS '{w}'"
+                    for w in query_words[:10]
                 )
-                entity_list = [row['n.id'] for row in all_entities if row['n.id']]
-            
+                keyword_result = session.run(
+                    f"MATCH (n) WHERE '__Entity__' IN labels(n) "
+                    f"AND n.id IS NOT NULL "
+                    f"AND ({contains_clauses}) "
+                    f"RETURN n.id LIMIT 200"
+                )
+                entity_list = [
+                    row['n.id'] for row in keyword_result
+                    if row['n.id']
+                ]
+
+            # Stage 2: if keyword filter too sparse, fetch broader set
+            if len(entity_list) < 20:
+                broad_result = session.run(
+                    "MATCH (n) WHERE '__Entity__' IN labels(n) "
+                    "AND n.id IS NOT NULL "
+                    "RETURN n.id ORDER BY rand() LIMIT 1000"
+                )
+                broad_list = [
+                    row['n.id'] for row in broad_result
+                    if row['n.id']
+                ]
+                # Merge: keyword matches first, then broad
+                seen = set(entity_list)
+                for eid in broad_list:
+                    if eid not in seen:
+                        entity_list.append(eid)
+                        seen.add(eid)
+
             if not entity_list:
                 return "No entities found in the knowledge graph.", [], [], []
             
@@ -551,17 +589,58 @@ class MultimodalGraphRetriever:
                 # -------------------------------------------------------- #
                 # A. Entity nodes  (text modality)
                 # -------------------------------------------------------- #
-                entity_result = session.run(
-                    """
-                    MATCH (n)
-                    WHERE '__Entity__' IN labels(n)
-                    RETURN n.id AS node_id
-                    LIMIT 500
-                    """
-                )
-                entity_ids: List[str] = [
-                    row["node_id"] for row in entity_result if row["node_id"]
+                # Step A: Semantic-keyword entity pre-filter
+                # Extract keywords from query (words > 3 chars, no stopwords)
+                _stopwords = {
+                    'what', 'where', 'when', 'which', 'with', 'from',
+                    'this', 'that', 'have', 'does', 'their', 'about',
+                    'were', 'been', 'they', 'will', 'would', 'could',
+                    'should', 'than', 'then', 'also', 'each', 'into',
+                    'over', 'more', 'some', 'such', 'most', 'other',
+                }
+                query_words = [
+                    w.strip('?.,:;').lower()
+                    for w in question.split()
+                    if len(w.strip('?.,:;')) > 3
+                    and w.strip('?.,:;').lower() not in _stopwords
                 ]
+
+                entity_ids: List[str] = []
+
+                if query_words:
+                    # Build case-insensitive CONTAINS filter
+                    contains_clauses = " OR ".join(
+                        f"toLower(n.id) CONTAINS '{w}'"
+                        for w in query_words[:10]
+                    )
+                    keyword_result = session.run(
+                        f"MATCH (n) WHERE '__Entity__' IN labels(n) "
+                        f"AND n.id IS NOT NULL "
+                        f"AND ({contains_clauses}) "
+                        f"RETURN n.id LIMIT 200"
+                    )
+                    entity_ids = [
+                        row['n.id'] for row in keyword_result
+                        if row['n.id']
+                    ]
+
+                # Stage 2: if keyword filter too sparse, fetch broader set
+                if len(entity_ids) < 20:
+                    broad_result = session.run(
+                        "MATCH (n) WHERE '__Entity__' IN labels(n) "
+                        "AND n.id IS NOT NULL "
+                        "RETURN n.id ORDER BY rand() LIMIT 1000"
+                    )
+                    broad_list = [
+                        row['n.id'] for row in broad_result
+                        if row['n.id']
+                    ]
+                    # Merge: keyword matches first, then broad
+                    seen = set(entity_ids)
+                    for eid in broad_list:
+                        if eid not in seen:
+                            entity_ids.append(eid)
+                            seen.add(eid)
 
                 text_context = ""
                 text_nodes: List[str] = []
