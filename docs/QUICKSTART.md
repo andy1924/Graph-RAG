@@ -1,154 +1,103 @@
----
-**Authors**: Arnav Deshpande, Sarvesh Nimbalkar, Aadi Rawat, Dhruv Gadia  
-**Institution**: Mukesh Patel School of Technology and Management, NMIMS, Mumbai  
-**License**: MIT License  
-**Contact**: deshpandearnavn@gmail.com  
-**Last Updated**: March 2026  
----
+# Quick Start Guide
 
-# Quick Start Guide - GraphRAG System
+Get GraphRAG running in under 10 minutes.
 
-A research-grade Graph-based Retrieval-Augmented Generation system for question answering over structured knowledge graphs with full source attribution.
+## Prerequisites
 
-## Installation & Setup
+| Requirement | Version |
+|---|---|
+| Python | 3.10+ |
+| Neo4j | Aura (cloud) or local 5.x |
+| OpenAI API key | GPT-4o-mini access |
 
-### 1. Install Dependencies
+## 1. Installation
+
 ```bash
+git clone https://github.com/yourusername/Graph-RAG.git
+cd Graph-RAG
+
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # Linux/macOS
+
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-Copy `.env.example` to `.env` and update with your credentials:
+## 2. Environment Setup
+
 ```bash
-# .env configuration
-OPENAI_API_KEY=your_openai_key_here
-NEO4J_URI=neo4j+s://xxx.databases.neo4j.io
+cp .env.example .env
+```
+
+Edit `.env` with your credentials:
+
+```dotenv
+OPENAI_API_KEY=sk-...
+NEO4J_URI=neo4j+s://xxxx.databases.neo4j.io
 NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your_password
-NEO4J_DATABASE=your_database_name
+NEO4J_PASSWORD=your-password
+NEO4J_DATABASE=neo4j
 ```
 
-## Quick Usage
+## 3. Ingest Data
 
-### Option 1: Simple Entity-Based Retrieval ⭐ (Recommended)
+Ingest the Attention paper (included as a test corpus):
+
 ```bash
-python main.py --mode simple
+python main.py ingest --corpus attention_paper --target naiverag
 ```
 
-**Example interaction:**
-```
-Ask your graph a question: What is self-attention?
+Ingest all available corpora:
 
-📊 SOURCES FROM KNOWLEDGE GRAPH:
-  • Self-Attention -[USES]-> Encoder
-  • Self-Attention -[RELIES_ON]-> Dot-Product Attention
-  • Self-Attention -[APPROACH]-> Parallel Computing
-
-💭 Retrieved Context Summary:
-  Self-Attention is an approach in the Transformer model used in both 
-  Encoder and Decoder that relies on Dot-Product Attention and supports 
-  Parallel Computing...
-
-✅ ANSWER:
-  Based on the knowledge graph, Self-Attention is a core mechanism in the 
-  Transformer architecture used in both encoder and decoder...
-```
-
-### Option 2: Multimodal Context-Based Retrieval
 ```bash
-python main.py --mode multimodal
+python main.py ingest --all
 ```
 
-Provides richer context with multiple entity relationships for more comprehensive answers.
+## 4. Ask a Question
 
-### Option 3: Data Ingestion (Load PDF into Graph)
 ```bash
-python main.py --ingest
+python main.py query --mode graphrag
 ```
 
-This:
-1. Loads PDF document (Attention Is All You Need)
-2. Extracts entities and relationships using LLM
-3. Creates structured graph representation  
-4. Ingests into Neo4j knowledge base
-
-## System Architecture
-
-The GraphRAG system implements **Retrieval-Augmented Generation (RAG)** with full source attribution:
+Example session:
 
 ```
-1. ENTITY SELECTION
-   ↓ All entities fetched from graph
-   ↓ LLM selects entities relevant to question
+✓ GraphRAG retriever loaded
 
-2. RELATIONSHIP EXTRACTION  
-   ↓ Graph relationships retrieved for selected entities
-   ↓ Formatted as facts for context
+GraphRAG Query Interface  [graphrag mode]
+============================================================
+Type your question, or 'quit' to exit.
 
-3. CONTEXT SUMMARIZATION
-   ↓ Relationships summarized into 2-3 concise statements
-   ↓ Context optimized for LLM consumption
+Question: What is the Transformer model?
 
-4. ANSWER GENERATION
-   ↓ LLM generates answer ONLY from retrieved context
-   ↓ Prevents hallucination, ensures verifiable answers
-
-5. SOURCE ATTRIBUTION
-   ↓ Citations show which graph entities support answer
-   ↓ Full traceability of information
+  GraphRAG → The Transformer is a transduction model that relies entirely
+  on self-attention mechanisms, dispensing with recurrence and convolutions.
 ```
 
-## Key Features
+## 5. Compare Systems
 
-✅ **Research-Grade**: Full source citations and traceability  
-✅ **Context-Aware**: Answers grounded in knowledge graph  
-✅ **Multimodal**: Supports both simple and rich context retrieval  
-✅ **Scalable**: Graph-based approach scales with knowledge size  
-✅ **Verifiable**: Every answer backed by graph entities/relationships  
+Run side-by-side comparison of GraphRAG vs NaiveRAG:
 
-## Files Overview
+```bash
+python main.py query --mode both
+```
 
-| File | Purpose |
-|------|---------|
-| `main.py` | Entry point with CLI argument handling |
-| `retrival.py` | Simple entity-based retrieval system |
-| `multiModalGraphRetrival.py` | Multimodal context retrieval system |
-| `ingest_attention.py` | Data ingestion pipeline for PDFs |
-| `requirements.txt` | Python dependencies |
-| `.env.example` | Environment variable template |
+## 6. Run Evaluations
 
-## Example Questions
+```bash
+# Full evaluation suite
+python main.py evaluate --all
 
-The system works well with questions like:
+# Individual experiments
+python main.py evaluate --experiment comprehensive
+python main.py evaluate --experiment naiverag
+python main.py evaluate --experiment significance
+```
 
-- "What is self-attention?"
-- "What are the components of a Transformer?"
-- "What is positional encoding?"
-- "What relationships exist between Multi-Head Attention and Layer Normalization?"
-- "How does the encoder use embeddings?"
+Results are saved to `results/`.
 
-## Troubleshooting
+## Next Steps
 
-**Issue**: `ModuleNotFoundError: No module named 'neo4j'`  
-**Solution**: Activate your virtual environment and run `pip install -r requirements.txt`
-
-**Issue**: `Neo4j connection failed`  
-**Solution**: Verify `.env` file has correct URI, username, and password for your Neo4j instance
-
-**Issue**: `OpenAI API key invalid`  
-**Solution**: Check `.env` has valid `OPENAI_API_KEY` from your OpenAI account
-
-## Research Applications
-
-This system is designed for:
-- Literature mining and knowledge extraction
-- Question answering over technical papers
-- Knowledge graph construction and querying
-- Multimodal document analysis
-- Evaluation of RAG system performance
-
-## Further Reading
-
-- See `README.md` for detailed architecture documentation
-- See `RESEARCH_GOAL.md` for research objectives
-- See `src/graphrag/` for module implementations
+- Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand system design
+- Read [EVALUATION.md](EVALUATION.md) for metric definitions and analysis
+- Read [USAGE.md](USAGE.md) for advanced configuration

@@ -1,7 +1,10 @@
-#Project Specific
-db/
+# Project-specific
 .idea/
-KNOWLADEGE.md
+archive/
+data/chroma_db/
+data/extracted_images/
+data/multiModalPDF/
+results/*.log
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
