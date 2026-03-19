@@ -212,29 +212,41 @@ def print_results_table(results: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 def _load_hallucination_rates(filepath: str, details_key: str) -> List[float]:
-    """Extract per-question hallucination_rate values from a result JSON."""
+    """Extract per-question hallucination_rate values from a result JSON.
+    
+    Supports two structures:
+      1. Flat: data["details"] = [{...}, ...]
+      2. Nested: data["per_corpus_baseline"][corpus_id]["details"] = [{...}, ...]
+    """
     with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # For multi-corpus structure:
-    # Details are nested under per_corpus_baseline[corpus_id]["details"]
-    # or per_corpus_naiverag[corpus_id]["details"]
     rates = []
-    
-    # Check for multi-corpus structure
-    multi_corpus_key = "per_corpus_baseline" if "baseline" in details_key else "per_corpus_naiverag"
-    if multi_corpus_key in data:
-        for corpus_id, corpus_data in data[multi_corpus_key].items():
-            details = corpus_data.get("details", [])
-            for item in details:
-                if "metrics" in item and "hallucination_rate" in item["metrics"]:
-                    rates.append(item["metrics"]["hallucination_rate"])
-    elif details_key in data:
-        details = data.get(details_key, [])
-        for item in details:
+
+    # 1) Flat "details" list (new naiverag format)
+    if "details" in data and isinstance(data["details"], list):
+        for item in data["details"]:
             if "metrics" in item and "hallucination_rate" in item["metrics"]:
                 rates.append(item["metrics"]["hallucination_rate"])
-    
+        return rates
+
+    # 2) Nested per_corpus structure (graphrag format)
+    for key in ("per_corpus_baseline", "per_corpus_naiverag"):
+        if key in data:
+            for corpus_id, corpus_data in data[key].items():
+                details = corpus_data.get("details", [])
+                for item in details:
+                    if "metrics" in item and "hallucination_rate" in item["metrics"]:
+                        rates.append(item["metrics"]["hallucination_rate"])
+            if rates:
+                return rates
+
+    # 3) Fallback: try the explicit details_key
+    details = data.get(details_key, [])
+    for item in details:
+        if "metrics" in item and "hallucination_rate" in item["metrics"]:
+            rates.append(item["metrics"]["hallucination_rate"])
+
     return rates
 
 

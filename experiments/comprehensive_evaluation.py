@@ -80,7 +80,6 @@ class AttentionPaperCorpus(Corpus):
             "What are the main characteristics of the Transformer architecture?",
             "How does Multi-Head Attention relate to Scaled Dot-Product Attention?",
             "What is the performance significance of the Transformer model on the WMT 2014 English-to-German translation task?",
-            "Compare the computational complexity per layer of self-attention layers and recurrent layers.",
             "What is the impact of masking in the decoder's self-attention sub-layer?",
             "What role do Positional Encodings play in the Transformer and why are they necessary given the absence of recurrence?",
             "How do residual connections and layer normalization contribute to training stability in the Transformer?",
@@ -92,6 +91,7 @@ class AttentionPaperCorpus(Corpus):
             "What are the number of attention heads and key/value dimensions in the Transformer base versus big model?",
             "What Adam optimizer hyperparameters were used to train the Transformer?",
             "What results did the Transformer achieve on English constituency parsing, and how does it generalize?",
+            "Compare the computational complexity per layer of self-attention layers and recurrent layers.",
         ]
 
     @property
@@ -100,7 +100,6 @@ class AttentionPaperCorpus(Corpus):
             "The Transformer is a network architecture based solely on attention mechanisms, dispensing with recurrence and convolutions entirely, and using stacked self-attention and point-wise, fully connected layers. [cite: 17, 78]",
             "Multi-Head Attention connects to Scaled Dot-Product Attention by linearly projecting queries, keys, and values h times, and performing the scaled dot-product attention function in parallel on each projected version. [cite: 126, 127]",
             "The Transformer model achieved a new state-of-the-art BLEU score of 28.4 on the WMT 2014 English-to-German translation task, improving over existing best results by over 2 BLEU. [cite: 19]",
-            "Self-attention layers have a complexity of O(n^2 * d) per layer, while recurrent layers have a complexity of O(n * d^2), making self-attention faster when sequence length n is smaller than representation dimensionality d. [cite: 163, 187, 188, 189]",
             "Masking impacts the decoder by preventing positions from attending to subsequent positions, ensuring that predictions for position i can depend only on the known outputs at positions less than i, preserving the auto-regressive property. [cite: 88, 89]",
             "Since the Transformer contains no recurrence or convolution, it has no inherent notion of token order. Positional encodings are added to input embeddings to inject sequence position information. The paper uses sine and cosine functions of different frequencies — sin(pos/10000^(2i/d_model)) and cos(pos/10000^(2i/d_model)) — allowing the model to attend to relative positions and generalize to unseen sequence lengths.",
             "Each sub-layer in the Transformer — Multi-Head Attention and the Feed-Forward Network — employs a residual connection followed by layer normalization, formulated as LayerNorm(x + Sublayer(x)). Residual connections allow gradients to flow directly through the network, mitigating the vanishing gradient problem. Layer normalization stabilizes activations within each layer, enabling training of deep encoder and decoder stacks.",
@@ -111,7 +110,8 @@ class AttentionPaperCorpus(Corpus):
             "For English-to-German, the data was encoded using byte-pair encoding with a shared source-target vocabulary of approximately 37,000 tokens. For English-to-French, a word-piece vocabulary of 32,000 tokens was used. Sentence pairs were batched by approximate sequence length.",
             "The base model uses h = 8 parallel attention heads with d_model = 512, giving d_k = d_v = 64 per head. The big model uses h = 16 heads with d_model = 1024, giving d_k = d_v = 64 per head. The big model has 213M parameters compared to 65M for the base model.",
             "Training used the Adam optimizer with β1 = 0.9, β2 = 0.98, and ε = 10^-9. The learning rate followed a warmup schedule: increasing linearly for warmup_steps = 4000 training steps, then decreasing proportionally to the inverse square root of the step number.",
-            "The Transformer was evaluated on English constituency parsing using the Wall Street Journal portion of the Penn Treebank. In the WSJ-only setting with a 4-layer model it outperformed all previously reported models except the Recurrent Neural Network Grammar. In the semi-supervised setting using 17 million sentences it achieved 93.3 F1, outperforming all prior work except the Berkeley Parser ensemble, demonstrating the Transformer generalizes well beyond machine translation."
+            "The Transformer was evaluated on English constituency parsing using the Wall Street Journal portion of the Penn Treebank. In the WSJ-only setting with a 4-layer model it outperformed all previously reported models except the Recurrent Neural Network Grammar. In the semi-supervised setting using 17 million sentences it achieved 93.3 F1, outperforming all prior work except the Berkeley Parser ensemble, demonstrating the Transformer generalizes well beyond machine translation.",
+            "Self-attention layers have a complexity of O(n^2 * d) per layer, while recurrent layers have a complexity of O(n * d^2), making self-attention faster when sequence length n is smaller than representation dimensionality d. [cite: 163, 187, 188, 189]"
         ]
         return [_strip_cite_markers(r) for r in raw]
 
@@ -177,6 +177,26 @@ class TeslaCorpus(Corpus):
             "Tesla offers its own vehicle insurance product, Tesla Insurance, through Tesla Insurance Services, Inc. The product uses real-time driving behavior data from the vehicle to determine premiums. Tesla Insurance operates in multiple US states including Texas, California, Colorado, Illinois, Minnesota, and others. This vertical integration of insurance is part of Tesla's broader strategy to capture services revenue.",
         ]
 
+    @property
+    def relevant_items(self) -> List[List[str]]:
+        return [
+            ["Model S", "Model X", "Model 3", "Model Y", "Tesla Semi", "Cybertruck", "Powerwall", "Megapack"],
+            ["Tesla", "Tesla, Inc."],
+            ["Full Self-Driving", "Tesla Autopilot", "Autopilot", "Full Self-Driving Beta"],
+            ["Elon Musk", "Robyn Denholm", "Martin Eberhard", "Marc Tarpenning"],
+            ["North American Charging Standard", "Panasonic", "Catl", "Lg Energy Solution", "Toyota"],
+            ["Maxwell Technologies", "Maxwell Technology", "Hibar Systems", "Tesla", "Batteries"],
+            ["Tesla Energy", "Solarcity", "Powerwall", "Megapack", "Tesla Solar Roof"],
+            ["North American Charging Standard", "Nacs", "Tesla", "Toyota"],
+            ["Gigafactory Nevada", "Gigafactory Texas", "Gigafactory Shanghai", "Gigafactory Berlin", "Tesla Fremont Factory"],
+            ["Panasonic", "Catl", "Lg Energy Solution", "2170-Type", "4680-Type", "Prismatic Cells"],
+            ["Nhtsa", "Autopilot", "Tesla Autopilot", "Full Self-Driving", "Full Self-Driving Beta"],
+            ["Martin Eberhard", "Elon Musk", "Tesla", "California Department Of Fair Employment And Housing"],
+            ["Optimus", "Tesla", "Full Self-Driving"],
+            ["Tesla", "Tesla, Inc."],
+            ["Tesla Insurance Services, Inc.", "Tesla"],
+        ]
+
 
 
 class GoogleCorpus(Corpus):
@@ -226,6 +246,26 @@ class GoogleCorpus(Corpus):
             "Google acquired Motorola Mobility in 2012 for $12.5 billion, primarily to gain Motorola's extensive patent portfolio to defend Android against patent litigation. Google retained the patent portfolio but sold the Motorola handset business to Lenovo in 2014 for approximately $2.91 billion, taking a substantial loss on the device business while retaining the strategic patent assets.",
         ]
 
+    @property
+    def relevant_items(self) -> List[List[str]]:
+        return [
+            ["Google", "Larry Page", "Sergey Brin", "Pagerank", "Backrub"],
+            ["Gemini", "Bard (Now Gemini)", "Imagen", "Veo", "Notebooklm", "Learnlm", "Google"],
+            ["Google Ads", "Adsense", "Admob", "Doubleclick Adexchange", "Google"],
+            ["Google Search", "Gmail", "Google Maps", "Youtube", "Android", "Chrome", "Google Cloud", "Gemini"],
+            ["Eu Court Of Justice", "European Commission", "Google", "Google Llc", "Justice Department"],
+            ["Youtube", "Doubleclick", "Doubleclick Adexchange", "Google Ads", "Adsense", "Admob"],
+            ["Deepmind Technologies", "Alphago", "Gemini", "Bard (Now Gemini)", "Imagen", "Veo", "Notebooklm", "Learnlm"],
+            ["Eu Court Of Justice", "European Commission", "Cnil", "Google", "Alphabet Inc."],
+            ["Innovation Time Off", "Gmail", "Adsense", "Google News", "Google"],
+            ["Eric Schmidt", "Sundar Pichai", "Larry Page", "Google", "Alphabet Inc."],
+            ["Project Nightingale", "Ascension", "Google"],
+            ["Dunant", "Equiano", "Grace Hopper", "Curie", "Google"],
+            ["Google", "Ireland", "Netherlands", "Bermuda"],
+            ["Google Walkout", "Google"],
+            ["Motorola Mobility", "Google", "Alphabet Inc."],
+        ]
+
 
 
 class SpaceXCorpus(Corpus):
@@ -273,6 +313,26 @@ class SpaceXCorpus(Corpus):
             "Crew Dragon (Dragon 2) is SpaceX's crewed spacecraft developed under NASA's Commercial Crew Program. Following the retirement of the Space Shuttle in 2011, the US paid Russia approximately $80 million per seat on Soyuz for ISS access. Crew Dragon's first crewed flight in May 2020 (Demo-2) restored US human launch capability. Crew Dragon regularly rotates NASA and international astronaut crews to the ISS.",
             "SpaceX's stated long-term goal is to make humanity multiplanetary by establishing a self-sustaining city on Mars. The company envisions sending thousands of Starship vehicles to Mars to build a colony of one million people within 50 years. The choice of methane as Starship's propellant is deliberate — methane can be synthesized on Mars using the Sabatier reaction from atmospheric CO2 and water ice, enabling in-situ propellant production for return flights.",
             "SpaceX generates revenue from three primary sources: launch services (commercial satellite launches, NASA contracts, US military national security launches via Falcon 9 and Falcon Heavy), Starlink subscriptions (consumer, aviation, maritime, and government plans), and NASA contracts including Commercial Resupply Services and Commercial Crew. Starlink has grown rapidly and is reported to be the largest revenue contributor, helping cross-subsidize Starship development.",
+        ]
+
+    @property
+    def relevant_items(self) -> List[List[str]]:
+        return [
+            ["Falcon 9", "SpaceX"],
+            ["Starship", "Super Heavy", "SpaceX", "NASA"],
+            ["Dragon", "Crew Dragon", "SpaceX", "NASA", "ISS"],
+            ["Starlink", "SpaceX"],
+            ["Elon Musk", "SpaceX"],
+            ["Falcon 1", "SpaceX", "NASA"],
+            ["Falcon 9", "SpaceX"],
+            ["Starship", "NASA", "Artemis"],
+            ["Raptor", "Merlin", "SpaceX"],
+            ["Falcon Heavy", "SpaceX", "Elon Musk"],
+            ["Starlink", "SpaceX"],
+            ["Starship", "SpaceX", "FAA", "Boca Chica"],
+            ["Crew Dragon", "SpaceX", "NASA", "ISS"],
+            ["SpaceX", "Elon Musk", "Mars"],
+            ["Starlink", "Falcon 9", "Falcon Heavy", "SpaceX", "NASA"],
         ]
 
 
