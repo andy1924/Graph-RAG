@@ -20,7 +20,6 @@ from graphrag.config import config
 from graphrag.retrieval import GraphRetriever, SemanticGraphRetriever, MultimodalGraphRetriever, get_graph_context, ask_llm_with_context
 from graphrag.evaluation import EvaluationPipeline
 from graphrag.utils import ExperimentLogger
-from graphrag.utils.data_retriever import get_relevant_items_mapping, QUESTION_KEYWORDS_MAPPING
 
 logger = ExperimentLogger("comprehensive_eval")
 
@@ -117,16 +116,23 @@ class AttentionPaperCorpus(Corpus):
 
     @property
     def relevant_items(self) -> List[List[str]]:
-        # Retrieve relevant items from actual graph data
-        print("\n" + "=" * 60)
-        print("Loading relevant items from graph data (Attention Paper)...")
-        print("=" * 60)
-        items = get_relevant_items_mapping(
-            self.questions,
-            question_keywords=QUESTION_KEYWORDS_MAPPING,
-        )
-        print("=" * 60 + "\n")
-        return items
+        return [
+            ["Transformer", "Encoder-Decoder Structure", "Self-Attention Mechanism", "Multi-Head Attention", "Encoder", "Decoder"],
+            ["Multi-Head Attention", "Scaled Dot-Product Attention", "Attention Head", "Queries", "Keys", "Values", "Softmax"],
+            ["Transformer", "Transformer (Big)", "Transformer (Base Model)", "Gnmt + Rl Ensemble [38]", "Convs2S Ensemble [9]"],
+            ["Encoder", "Decoder", "Masking", "Auto-Regressive Property", "Encoder-Decoder Attention"],
+            ["Encoder", "Decoder", "Embeddings", "Encoder-Decoder Structure", "Recurrent Neural Networks"],
+            ["Encoder", "Decoder", "Encoder-Decoder Structure", "Multi-Head Attention", "Position-Wise Feed-Forward Networks"],
+            ["Ashish Vaswani", "Noam Shazeer", "Niki Parmar", "Jakob Uszkoreit", "Llion Jones", "Aidan N. Gomez", "Google Brain", "University Of Toronto"],
+            ["Transformer (Big)", "Transformer (Base Model)", "Gnmt + Rl Ensemble [38]", "Convs2S Ensemble [9]", "Convs2S [9]"],
+            ["Position-Wise Feed-Forward Networks", "Linear Transformations", "Relu Activation", "Model Dmodel", "Df F", "Inner-Layer"],
+            ["Transformer", "Encoder", "Decoder", "Embeddings"],
+            ["Transformer", "Encoder", "Decoder"],
+            ["Multi-Head Attention", "Scaled Dot-Product Attention", "Transformer (Base Model)", "Transformer (Big)"],
+            ["Transformer", "Encoder", "Decoder"],
+            ["Transformer", "Transformer (4 Layers) Wsj Only", "Transformer (4 Layers) Semi-Supervised"],
+            ["Self-Attention Mechanism", "Recurrent Neural Networks", "Recurrent Language Models", "Convolutional Neural Networks"],
+        ]
 
 
 
@@ -180,21 +186,21 @@ class TeslaCorpus(Corpus):
     @property
     def relevant_items(self) -> List[List[str]]:
         return [
-            ["Model S", "Model X", "Model 3", "Model Y", "Tesla Semi", "Cybertruck", "Powerwall", "Megapack"],
-            ["Tesla", "Tesla, Inc."],
-            ["Full Self-Driving", "Tesla Autopilot", "Autopilot", "Full Self-Driving Beta"],
-            ["Elon Musk", "Robyn Denholm", "Martin Eberhard", "Marc Tarpenning"],
-            ["North American Charging Standard", "Panasonic", "Catl", "Lg Energy Solution", "Toyota"],
-            ["Maxwell Technologies", "Maxwell Technology", "Hibar Systems", "Tesla", "Batteries"],
-            ["Tesla Energy", "Solarcity", "Powerwall", "Megapack", "Tesla Solar Roof"],
-            ["North American Charging Standard", "Nacs", "Tesla", "Toyota"],
-            ["Gigafactory Nevada", "Gigafactory Texas", "Gigafactory Shanghai", "Gigafactory Berlin", "Tesla Fremont Factory"],
-            ["Panasonic", "Catl", "Lg Energy Solution", "2170-Type", "4680-Type", "Prismatic Cells"],
-            ["Nhtsa", "Autopilot", "Tesla Autopilot", "Full Self-Driving", "Full Self-Driving Beta"],
-            ["Martin Eberhard", "Elon Musk", "Tesla", "California Department Of Fair Employment And Housing"],
-            ["Optimus", "Tesla", "Full Self-Driving"],
-            ["Tesla", "Tesla, Inc."],
-            ["Tesla Insurance Services, Inc.", "Tesla"],
+            ["Model S", "Model X", "Model 3", "Model Y", "Cybertruck", "Tesla Semi", "Powerwall", "Megapack", "Cybercab"],
+            ["Tesla, Inc.", "Tesla"],
+            ["Full Self-Driving", "Tesla Autopilot", "Autopilot", "Full Self-Driving Beta", "Fsd Software", "Level 2 Automation"],
+            ["Elon Musk", "Robyn Denholm", "Martin Eberhard", "Marc Tarpenning", "Tesla, Inc."],
+            ["Nacs", "Panasonic", "Solarcity", "Toyota", "Tesla, Inc.", "North American Charging Standard"],
+            ["Grohmann Engineering", "Solarcity", "Tesla, Inc.", "Tesla", "Batteries", "4680", "2170"],
+            ["Solarcity", "Tesla, Inc.", "Powerwall", "Megapack", "Tesla Automation"],
+            ["Nacs", "North American Charging Standard", "Supercharger", "Toyota", "Tesla, Inc."],
+            ["Tesla, Inc.", "Tesla"],
+            ["Panasonic", "Solarcity", "2170-Type", "4680-Type", "Prismatic Cells", "Tesla, Inc."],
+            ["Autopilot", "Tesla Autopilot", "Full Self-Driving", "Full Self-Driving Beta", "Tesla Model S", "Tesla Model X"],
+            ["Martin Eberhard", "Elon Musk", "Alex Khatilov", "Tesla, Inc.", "Tesla"],
+            ["Tesla, Inc.", "Tesla"],
+            ["Tesla, Inc.", "Tesla"],
+            ["Tesla, Inc.", "Tesla Insurance Services, Inc."],
         ]
 
 
@@ -249,20 +255,20 @@ class GoogleCorpus(Corpus):
     @property
     def relevant_items(self) -> List[List[str]]:
         return [
-            ["Google", "Larry Page", "Sergey Brin", "Pagerank", "Backrub"],
-            ["Gemini", "Bard (Now Gemini)", "Imagen", "Veo", "Notebooklm", "Learnlm", "Google"],
-            ["Google Ads", "Adsense", "Admob", "Doubleclick Adexchange", "Google"],
-            ["Google Search", "Gmail", "Google Maps", "Youtube", "Android", "Chrome", "Google Cloud", "Gemini"],
-            ["Eu Court Of Justice", "European Commission", "Google", "Google Llc", "Justice Department"],
-            ["Youtube", "Doubleclick", "Doubleclick Adexchange", "Google Ads", "Adsense", "Admob"],
-            ["Deepmind Technologies", "Alphago", "Gemini", "Bard (Now Gemini)", "Imagen", "Veo", "Notebooklm", "Learnlm"],
-            ["Eu Court Of Justice", "European Commission", "Cnil", "Google", "Alphabet Inc."],
+            ["Google", "Larry Page", "Sergey Brin", "Pagerank", "Backrub Search Engine"],
+            ["Alphago", "Bard (Now Gemini)", "Imagen", "Veo", "Notebooklm", "Learnlm", "Google"],
+            ["Google Ads", "Adsense", "Admob", "Doubleclick Adexchange", "Google", "Alphabet Inc."],
+            ["Google Search", "Gmail", "Youtube", "Android", "Google Cloud", "Google Maps", "Gemini"],
+            ["Google", "Alphabet Inc.", "€2.4 Billion Fine", "Justice Department"],
+            ["Youtube", "Doubleclick", "Doubleclick Adexchange", "Google Ads", "Adsense", "Google"],
+            ["Alphago", "Bard (Now Gemini)", "Imagen", "Veo", "Notebooklm", "Learnlm", "Google"],
+            ["€2.4 Billion Fine", "Google", "Alphabet Inc."],
             ["Innovation Time Off", "Gmail", "Adsense", "Google News", "Google"],
             ["Eric Schmidt", "Sundar Pichai", "Larry Page", "Google", "Alphabet Inc."],
-            ["Project Nightingale", "Ascension", "Google"],
-            ["Dunant", "Equiano", "Grace Hopper", "Curie", "Google"],
+            ["Google", "Alphabet Inc."],
+            ["Google", "Alphabet Inc."],
             ["Google", "Ireland", "Netherlands", "Bermuda"],
-            ["Google Walkout", "Google"],
+            ["Google", "Alphabet Inc."],
             ["Motorola Mobility", "Google", "Alphabet Inc."],
         ]
 
@@ -318,21 +324,21 @@ class SpaceXCorpus(Corpus):
     @property
     def relevant_items(self) -> List[List[str]]:
         return [
-            ["Falcon 9", "SpaceX"],
-            ["Starship", "Super Heavy", "SpaceX", "NASA"],
-            ["Dragon", "Crew Dragon", "SpaceX", "NASA", "ISS"],
-            ["Starlink", "SpaceX"],
-            ["Elon Musk", "SpaceX"],
-            ["Falcon 1", "SpaceX", "NASA"],
-            ["Falcon 9", "SpaceX"],
-            ["Starship", "NASA", "Artemis"],
-            ["Raptor", "Merlin", "SpaceX"],
-            ["Falcon Heavy", "SpaceX", "Elon Musk"],
-            ["Starlink", "SpaceX"],
-            ["Starship", "SpaceX", "FAA", "Boca Chica"],
-            ["Crew Dragon", "SpaceX", "NASA", "ISS"],
-            ["SpaceX", "Elon Musk", "Mars"],
-            ["Starlink", "Falcon 9", "Falcon Heavy", "SpaceX", "NASA"],
+            ["Falcon 9", "Spacex", "Falcon Rockets"],
+            ["Starship", "Spacex", "Dragon Spacecraft"],
+            ["Dragon", "Dragon 1", "Dragon 2", "Dragon Spacecraft", "Spacex", "Crew Dragon"],
+            ["Starlink", "Spacex", "Starlink Satellite Constellation", "Starlink Mini"],
+            ["Spacex", "Elon Musk"],
+            ["Falcon 1", "Spacex"],
+            ["Falcon 9", "Spacex"],
+            ["Starship", "Spacex", "Nasa Crewed Spaceflight Artemis Program"],
+            ["Raptor Engines", "Falcon 9", "Falcon Heavy", "Spacex"],
+            ["Falcon Heavy", "Spacex", "Ses-10"],
+            ["Starlink", "Spacex", "Starlink Satellite Constellation"],
+            ["Starship", "Spacex"],
+            ["Crew Dragon", "Dragon 2", "Demo-2", "Spacex"],
+            ["Spacex", "Elon Musk"],
+            ["Starlink", "Falcon 9", "Falcon Heavy", "Spacex"],
         ]
 
 

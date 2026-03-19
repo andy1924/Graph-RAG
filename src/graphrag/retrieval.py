@@ -66,8 +66,19 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
     try:
         with driver.session(database=database) as session:
             # Step A: Get all entity names from graph
-            all_entities = session.run("MATCH (n) WHERE '__Entity__' IN labels(n) RETURN n.id LIMIT 500")
-            entity_list = [row['n.id'] for row in all_entities]
+            all_entities = session.run(
+                "MATCH (n) WHERE '__Entity__' IN labels(n) "
+                "AND n.id IS NOT NULL RETURN n.id LIMIT 500"
+            )
+            entity_list = [row['n.id'] for row in all_entities if row['n.id']]
+
+            if not entity_list:
+                # Fallback: langchain may store id differently
+                all_entities = session.run(
+                    "MATCH (n) WHERE n.id IS NOT NULL "
+                    "RETURN n.id LIMIT 500"
+                )
+                entity_list = [row['n.id'] for row in all_entities if row['n.id']]
             
             if not entity_list:
                 return "No entities found in the knowledge graph.", [], [], []
