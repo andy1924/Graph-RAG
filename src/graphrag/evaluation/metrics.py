@@ -376,7 +376,7 @@ class HallucinationDetector:
     def detect_unsupported_claims(
         answer: str,
         context: str,
-        threshold: float = 0.5
+        threshold: float = 0.35
     ) -> Tuple[float, List[str]]:
         """
         Detect claims in answer not supported by context.

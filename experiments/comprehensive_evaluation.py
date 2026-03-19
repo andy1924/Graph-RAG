@@ -372,7 +372,7 @@ def run_baseline_experiment(
     )
     logger.get_logger().info("=" * 60)
 
-    retriever = GraphRetriever()
+    retriever = MultimodalGraphRetriever()
     evaluator = EvaluationPipeline(f"baseline_{corpus.corpus_id}")
 
     per_question_results = []
@@ -388,17 +388,13 @@ def run_baseline_experiment(
 
         try:
             start = time.perf_counter()
-            retrieved_context, sources, retrieved_nodes, _relations = (
-                get_graph_context(
-                    question,
-                    retriever.client,
-                    retriever.driver,
-                    retriever.database,
-                )
+            answer, metadata = retriever.answer_with_multimodal_context(
+                question,
+                include_modalities=["text", "table", "image"],
             )
-            answer = ask_llm_with_context(
-                question, retrieved_context, retriever.client
-            )
+            retrieved_context = metadata.get("context", "")
+            sources = metadata.get("sources", [])
+            retrieved_nodes = metadata.get("retrieved_nodes", [])
             elapsed = time.perf_counter() - start
 
             assert retrieved_context != answer, (

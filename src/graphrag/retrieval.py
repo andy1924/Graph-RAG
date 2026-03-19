@@ -75,43 +75,71 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
                 'over', 'more', 'some', 'such', 'most', 'other',
             }
             query_words = [
-                w.strip('?.,:;').lower()
+                w.strip('?.,:;\'"').lower()
                 for w in user_query.split()
-                if len(w.strip('?.,:;')) > 3
-                and w.strip('?.,:;').lower() not in _stopwords
+                if len(w.strip('?.,:;\'"')) > 3
+                and w.strip('?.,:;\'"').lower() not in _stopwords
             ]
 
             entity_list = []
 
             if query_words:
                 # Build case-insensitive CONTAINS filter
+                # Escape single quotes to prevent Cypher injection
+                safe_words = [w.replace("'", "").replace('"', '') for w in query_words[:10]]
+                safe_words = [w for w in safe_words if len(w) > 2]  # re-filter after stripping
                 contains_clauses = " OR ".join(
                     f"toLower(n.id) CONTAINS '{w}'"
-                    for w in query_words[:10]
-                )
-                keyword_result = session.run(
-                    f"MATCH (n) WHERE '__Entity__' IN labels(n) "
-                    f"AND n.id IS NOT NULL "
-                    f"AND ({contains_clauses}) "
-                    f"RETURN n.id LIMIT 200"
-                )
-                entity_list = [
-                    row['n.id'] for row in keyword_result
-                    if row['n.id']
-                ]
+                    for w in safe_words
+                ) if safe_words else None
+                if contains_clauses:
+                    keyword_result = session.run(
+                        f"MATCH (n) WHERE '__Entity__' IN labels(n) "
+                        f"AND n.id IS NOT NULL "
+                        f"AND ({contains_clauses}) "
+                        f"RETURN n.id LIMIT 200"
+                    )
+                    entity_list = [
+                        row['n.id'] for row in keyword_result
+                        if row['n.id']
+                    ]
 
             # Stage 2: if keyword filter too sparse, fetch broader set
             if len(entity_list) < 20:
                 broad_result = session.run(
+                    "MATCH (seed) "
+                    "WHERE '__Entity__' IN labels(seed) "
+                    "AND seed.id IS NOT NULL "
+                    "AND ANY(w IN $words WHERE toLower(seed.id) CONTAINS w) "
+                    "OPTIONAL MATCH (seed)-[]-(neighbor) "
+                    "WHERE '__Entity__' IN labels(neighbor) "
+                    "AND neighbor.id IS NOT NULL "
+                    "RETURN coalesce(neighbor.id, seed.id) AS n_id "
+                    "LIMIT 1000",
+                    {"words": safe_words if query_words else []}
+                )
+                broad_list = [
+                    row['n_id'] for row in broad_result
+                    if row['n_id']
+                ]
+                # Merge: keyword matches first, then broad
+                seen = set(entity_list)
+                for eid in broad_list:
+                    if eid not in seen:
+                        entity_list.append(eid)
+                        seen.add(eid)
+
+            # Last resort when no keyword neighborhood was found.
+            if len(entity_list) < 20:
+                broad_result = session.run(
                     "MATCH (n) WHERE '__Entity__' IN labels(n) "
                     "AND n.id IS NOT NULL "
-                    "RETURN n.id ORDER BY rand() LIMIT 1000"
+                    "RETURN n.id LIMIT 1000"
                 )
                 broad_list = [
                     row['n.id'] for row in broad_result
                     if row['n.id']
                 ]
-                # Merge: keyword matches first, then broad
                 seen = set(entity_list)
                 for eid in broad_list:
                     if eid not in seen:
@@ -150,7 +178,30 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
                 # Fall back to original ordering if embeddings are unavailable.
                 ranked_entities = entity_list
 
-            entity_context = ", ".join(ranked_entities[:prefilter_top_k])
+            # Fix 2: Add entity context — fetch one relationship per entity
+            # using a single batched query instead of N round-trips
+            top_entities = ranked_entities[:prefilter_top_k]
+            entity_context_map = {}
+            try:
+                ctx_result = session.run(
+                    "UNWIND $entities AS eid "
+                    "MATCH (n {id: eid})-[r]-(neighbor) "
+                    "WHERE neighbor.id IS NOT NULL "
+                    "WITH eid, collect(type(r) + ' ' + neighbor.id)[0] AS rel_target "
+                    "RETURN eid, rel_target",
+                    {"entities": top_entities}
+                )
+                for row in ctx_result:
+                    if row.get('rel_target'):
+                        entity_context_map[row['eid']] = f"{row['eid']} ({row['rel_target']})"
+            except Exception:
+                pass  # Fallback: use bare entity names
+            
+            entity_context_with_info = [
+                entity_context_map.get(e, e) for e in top_entities
+            ]
+
+            entity_context = "\n".join(entity_context_with_info)
             
             # Step B: Ask LLM which entities are relevant to the query
             select_res = client.chat.completions.create(
@@ -158,9 +209,11 @@ def get_graph_context(user_query: str, client: OpenAI, driver, database: str) ->
                 messages=[
                     {"role": "system",
                      "content": """You are analyzing a question about a knowledge graph.
-Given a question and a list of exact entity names, return the 3-5 most relevant entities.
-Return ONLY the entity names, comma-separated. If none are relevant, return 'NONE'."""},
-                    {"role": "user", "content": f"Question: {user_query}\n\nEntity names: {entity_context}"}
+Given a question and a list of entity names (some with relationship context in parentheses),
+return the 3-5 most relevant entity names for answering the question.
+Return ONLY the bare entity names (without the parenthetical context), comma-separated.
+If none are relevant, return 'NONE'."""},
+                    {"role": "user", "content": f"Question: {user_query}\n\nEntities:\n{entity_context}"}
                 ]
             )
             
@@ -170,17 +223,50 @@ Return ONLY the entity names, comma-separated. If none are relevant, return 'NON
             
             selected_entities = [e.strip() for e in selected_entities_str.split(",")]
             
-            # Step C: Query Neo4j for exact entity matches and their relationships
-            relations = []
-            sources = []  # Track source citations
-            retrieved_nodes = set()
-            cypher = """
+            # Step C: Query 1-hop neighborhood for selected entities
+            # Fix 1+2: Extract year from query for temporal filtering
+            import re
+            year_match = re.search(r'\b(20\d{2})\b', user_query)
+            target_year = year_match.group(1) if year_match else None
+            
+            # Fix 1+4: Build Cypher with year filter + numeric prioritization
+            if target_year:
+                # Filter out irrelevant "Financial Year XXXX" nodes that don't match
+                year_filter = (
+                    f"AND (neighbor.id CONTAINS '{target_year}' "
+                    f"OR NOT neighbor.id STARTS WITH 'Financial Year')"
+                )
+            else:
+                year_filter = ""
+            
+            cypher = f"""
             MATCH (n)
             WHERE n.id = $entity
             OPTIONAL MATCH (n)-[r]-(neighbor)
-            RETURN n.id AS source, labels(n)[0] AS source_type, type(r) AS rel, neighbor.id AS target, labels(neighbor)[0] AS target_type
-            LIMIT 20
+            WHERE neighbor.id IS NOT NULL {year_filter}
+            RETURN n.id AS source, labels(n)[0] AS source_type,
+                   type(r) AS rel, neighbor.id AS target,
+                   labels(neighbor)[0] AS target_type,
+                   CASE WHEN neighbor.id =~ '.*[0-9]+.*' THEN 1 ELSE 0 END AS has_number
+            ORDER BY has_number DESC
+            LIMIT 25
             """
+            
+            relations = []
+            sources = []
+            retrieved_nodes = set()
+
+            def _is_noise_node(node_id: str) -> bool:
+                if not node_id or len(node_id) < 2:
+                    return True
+                # Common OCR/placeholder hash artifacts in imported graph data.
+                if len(node_id) == 32 and all(ch in "0123456789abcdef" for ch in node_id.lower()):
+                    return True
+                return False
+            
+            def _readable_rel(rel_type: str) -> str:
+                """Convert SCREAMING_SNAKE_CASE to readable text."""
+                return rel_type.replace("_", " ").lower()
             
             for entity in selected_entities:
                 results = list(session.run(cypher, {"entity": entity}))
@@ -189,32 +275,33 @@ Return ONLY the entity names, comma-separated. If none are relevant, return 'NON
                         retrieved_nodes.add(row['source'])
                     
                     if row.get('rel') and row.get('target'):
-                        rel_str = f"{row['source']} ({row.get('source_type', 'Unknown')}) {row['rel']} {row['target']} ({row.get('target_type', 'Unknown')})"
+                        if _is_noise_node(row['source']) or _is_noise_node(row['target']):
+                            continue
+                        if row['rel'] == 'MENTIONS':
+                            continue
+                        # Format as readable sentence: "Tesla is affiliated with Elon Musk"
+                        rel_str = f"{row['source']} {_readable_rel(row['rel'])} {row['target']}"
                         relations.append(rel_str)
                         sources.append(f"  • {row['source']} -[{row['rel']}]-> {row['target']}")
                         retrieved_nodes.add(row['target'])
                     elif row.get('source'):
+                        if _is_noise_node(row['source']):
+                            continue
                         rel_str = f"{row['source']} is a {row.get('source_type', 'Unknown')}"
                         relations.append(rel_str)
                         sources.append(f"  • {row['source']} ({row.get('source_type', 'Unknown')})")
             
-            # Step D: Summarize relationships into concise facts
+            # Step D: Return deduplicated raw facts — NO summarization
             if relations:
-                summary_prompt = f"""Summarize these knowledge graph facts into concise, factual statements relevant to answering: "{user_query}"
-Facts:
-{chr(10).join(relations)}
-
-Provide ONLY the summary statements, no preamble."""
+                seen_rels = set()
+                unique_relations = []
+                for r in relations:
+                    if r not in seen_rels:
+                        seen_rels.add(r)
+                        unique_relations.append(r)
                 
-                summary_res = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are a concise information summarizer. Extract key facts."},
-                        {"role": "user", "content": summary_prompt}
-                    ]
-                )
-                context = summary_res.choices[0].message.content.strip()
-                return context, sources, list(retrieved_nodes), relations
+                text_context = "\n".join(unique_relations)
+                return text_context, sources, list(retrieved_nodes), unique_relations
             else:
                 return "Entities found but no relationships.", [], [], []
     
@@ -241,19 +328,26 @@ def ask_llm_with_context(user_query: str, context: str, client: OpenAI) -> str:
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system",
-             "content": """You are answering questions based on ONLY the provided knowledge graph context.
-Use ONLY the facts provided below. Do not use external knowledge.
-Answer directly and specifically based on what the context shows.
-If the context does not contain relevant information, say so explicitly."""},
-            {"role": "user", "content": f"""Knowledge Graph Context:
+            {
+                "role": "system",
+                "content": (
+                    "You answer using ONLY the provided knowledge graph context. "
+                    "Never use external knowledge. "
+                    "If evidence is incomplete, explicitly state what is missing. "
+                    "Use at most 2 short sentences and avoid adding inferred details not explicitly present."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"""Knowledge Graph Context:
 {context}
 
 Question: {user_query}
 
-Answer based ONLY on the context above."""}
+Answer using only the context above. If uncertain, say context is insufficient.""",
+            },
         ],
-        temperature=0
+        temperature=0,
     )
     return response.choices[0].message.content
 
@@ -443,7 +537,7 @@ class SemanticGraphRetriever:
             semantic_score = 0.0
             
             if self.driver and self.client:
-                # Stage 1: Graph retrieval
+                # Stage 1: Graph retrieval (already returns raw facts, no summarization)
                 context, sources, retrieved_nodes, raw_relations = get_graph_context(
                     question, self.client, self.driver, self.database
                 )
@@ -453,13 +547,7 @@ class SemanticGraphRetriever:
                     reranked_relations, semantic_score = self._rerank_relations(
                         question, raw_relations
                     )
-                    
-                    # Re-summarize using only the top-ranked relations
-                    reranked_context = self._summarize_relations(
-                        question, reranked_relations
-                    )
-                    if reranked_context:
-                        context = reranked_context
+                    context = "\n".join(reranked_relations)
                 
                 answer = ask_llm_with_context(question, context, self.client)
             else:
@@ -482,37 +570,6 @@ class SemanticGraphRetriever:
             context = f"Error context: {str(e)}"
             answer = f"Error: {str(e)}"
             return answer, {"error": str(e), "context": context}
-    
-    def _summarize_relations(self, question: str, relations: List[str]) -> Optional[str]:
-        """Summarize a list of relation strings into concise context using the LLM.
-        
-        Args:
-            question: The user question (for relevance framing).
-            relations: Relation strings to summarize.
-        
-        Returns:
-            Summarized context string, or None on failure.
-        """
-        if not relations or not self.client:
-            return None
-        
-        try:
-            summary_prompt = f"""Summarize these knowledge graph facts into concise, factual statements relevant to answering: "{question}"
-Facts:
-{chr(10).join(relations)}
-
-Provide ONLY the summary statements, no preamble."""
-            
-            summary_res = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a concise information summarizer. Extract key facts."},
-                    {"role": "user", "content": summary_prompt}
-                ]
-            )
-            return summary_res.choices[0].message.content.strip()
-        except Exception:
-            return None
     
     def close(self):
         """Close the database connection."""
@@ -599,43 +656,70 @@ class MultimodalGraphRetriever:
                     'over', 'more', 'some', 'such', 'most', 'other',
                 }
                 query_words = [
-                    w.strip('?.,:;').lower()
+                    w.strip('?.,:;\'"').lower()
                     for w in question.split()
-                    if len(w.strip('?.,:;')) > 3
-                    and w.strip('?.,:;').lower() not in _stopwords
+                    if len(w.strip('?.,:;\'"')) > 3
+                    and w.strip('?.,:;\'"').lower() not in _stopwords
                 ]
 
                 entity_ids: List[str] = []
 
                 if query_words:
                     # Build case-insensitive CONTAINS filter
+                    # Escape single quotes to prevent Cypher injection
+                    safe_words = [w.replace("'", "").replace('"', '') for w in query_words[:10]]
+                    safe_words = [w for w in safe_words if len(w) > 2]  # re-filter after stripping
                     contains_clauses = " OR ".join(
                         f"toLower(n.id) CONTAINS '{w}'"
-                        for w in query_words[:10]
-                    )
-                    keyword_result = session.run(
-                        f"MATCH (n) WHERE '__Entity__' IN labels(n) "
-                        f"AND n.id IS NOT NULL "
-                        f"AND ({contains_clauses}) "
-                        f"RETURN n.id LIMIT 200"
-                    )
-                    entity_ids = [
-                        row['n.id'] for row in keyword_result
-                        if row['n.id']
-                    ]
+                        for w in safe_words
+                    ) if safe_words else None
+                    if contains_clauses:
+                        keyword_result = session.run(
+                            f"MATCH (n) WHERE '__Entity__' IN labels(n) "
+                            f"AND n.id IS NOT NULL "
+                            f"AND ({contains_clauses}) "
+                            f"RETURN n.id LIMIT 200"
+                        )
+                        entity_ids = [
+                            row['n.id'] for row in keyword_result
+                            if row['n.id']
+                        ]
 
                 # Stage 2: if keyword filter too sparse, fetch broader set
                 if len(entity_ids) < 20:
                     broad_result = session.run(
+                        "MATCH (seed) "
+                        "WHERE '__Entity__' IN labels(seed) "
+                        "AND seed.id IS NOT NULL "
+                        "AND ANY(w IN $words WHERE toLower(seed.id) CONTAINS w) "
+                        "OPTIONAL MATCH (seed)-[]-(neighbor) "
+                        "WHERE '__Entity__' IN labels(neighbor) "
+                        "AND neighbor.id IS NOT NULL "
+                        "RETURN coalesce(neighbor.id, seed.id) AS n_id "
+                        "LIMIT 1000",
+                        {"words": safe_words if query_words else []}
+                    )
+                    broad_list = [
+                        row['n_id'] for row in broad_result
+                        if row['n_id']
+                    ]
+                    # Merge: keyword matches first, then broad
+                    seen = set(entity_ids)
+                    for eid in broad_list:
+                        if eid not in seen:
+                            entity_ids.append(eid)
+                            seen.add(eid)
+
+                if len(entity_ids) < 20:
+                    broad_result = session.run(
                         "MATCH (n) WHERE '__Entity__' IN labels(n) "
                         "AND n.id IS NOT NULL "
-                        "RETURN n.id ORDER BY rand() LIMIT 1000"
+                        "RETURN n.id LIMIT 1000"
                     )
                     broad_list = [
                         row['n.id'] for row in broad_result
                         if row['n.id']
                     ]
-                    # Merge: keyword matches first, then broad
                     seen = set(entity_ids)
                     for eid in broad_list:
                         if eid not in seen:
@@ -674,7 +758,29 @@ class MultimodalGraphRetriever:
                     except Exception:
                         ranked_ids = entity_ids
 
-                    candidate_str = ", ".join(ranked_ids[:prefilter_top_k])
+                    # Add entity context — single batched query
+                    top_ids = ranked_ids[:prefilter_top_k]
+                    entity_context_map = {}
+                    try:
+                        ctx_result = session.run(
+                            "UNWIND $entities AS eid "
+                            "MATCH (n {id: eid})-[r]-(neighbor) "
+                            "WHERE neighbor.id IS NOT NULL "
+                            "WITH eid, collect(type(r) + ' ' + neighbor.id)[0] AS rel_target "
+                            "RETURN eid, rel_target",
+                            {"entities": top_ids}
+                        )
+                        for row in ctx_result:
+                            if row.get('rel_target'):
+                                entity_context_map[row['eid']] = f"{row['eid']} ({row['rel_target']})"
+                    except Exception:
+                        pass
+                    
+                    entity_context_with_info = [
+                        entity_context_map.get(e, e) for e in top_ids
+                    ]
+
+                    candidate_str = "\n".join(entity_context_with_info)
 
                     # LLM selects relevant entities
                     sel_res = self.client.chat.completions.create(
@@ -684,15 +790,15 @@ class MultimodalGraphRetriever:
                                 "role": "system",
                                 "content": (
                                     "You are analyzing a question about a knowledge graph.\n"
-                                    "Given a question and a list of exact entity names, "
-                                    "return the 3-5 most relevant entities.\n"
-                                    "Return ONLY the entity names, comma-separated. "
+                                    "Given a question and a list of entity names (some with relationship context in parentheses), "
+                                    "return the 3-5 most relevant entity names for answering the question.\n"
+                                    "Return ONLY the bare entity names (without the parenthetical context), comma-separated. "
                                     "If none are relevant, return 'NONE'."
                                 ),
                             },
                             {
                                 "role": "user",
-                                "content": f"Question: {question}\n\nEntity names: {candidate_str}",
+                                "content": f"Question: {question}\n\nEntities:\n{candidate_str}",
                             },
                         ],
                     )
@@ -701,7 +807,7 @@ class MultimodalGraphRetriever:
                     if sel_str != "NONE":
                         selected = [s.strip() for s in sel_str.split(",")]
 
-                        # Relationship extraction for selected entities
+                        # 1-hop relationship extraction for selected entities
                         relations: List[str] = []
                         rel_cypher = """
                         MATCH (n)
@@ -710,8 +816,18 @@ class MultimodalGraphRetriever:
                         RETURN n.id AS source, labels(n) AS source_labels,
                                type(r) AS rel,
                                neighbor.id AS target, labels(neighbor) AS target_labels
-                        LIMIT 20
+                        LIMIT 25
                         """
+                        def _readable_rel(rel_type: str) -> str:
+                            return rel_type.replace("_", " ").lower()
+
+                        def _is_noise_node(node_id: str) -> bool:
+                            if not node_id or len(node_id) < 2:
+                                return True
+                            if len(node_id) == 32 and all(ch in "0123456789abcdef" for ch in node_id.lower()):
+                                return True
+                            return False
+                        
                         for nid in selected:
                             rows = list(session.run(rel_cypher, {"node_id": nid}))
                             for row in rows:
@@ -720,36 +836,33 @@ class MultimodalGraphRetriever:
                                     text_nodes.append(src)
                                 if row.get("rel") and row.get("target"):
                                     tgt = row["target"]
-                                    src_type = self._primary_label(row.get("source_labels") or [])
-                                    tgt_type = self._primary_label(row.get("target_labels") or [])
+                                    if _is_noise_node(src) or _is_noise_node(tgt):
+                                        continue
+                                    if row["rel"] == "MENTIONS":
+                                        continue
                                     relations.append(
-                                        f"{src} ({src_type}) {row['rel']} {tgt} ({tgt_type})"
+                                        f"{src} {_readable_rel(row['rel'])} {tgt}"
                                     )
                                     sources.append(f"  • {src} -[{row['rel']}]-> {tgt}")
                                     text_nodes.append(tgt)
                                 elif src:
+                                    if _is_noise_node(src):
+                                        continue
                                     src_type = self._primary_label(row.get("source_labels") or [])
                                     relations.append(f"{src} is a {src_type}")
                                     sources.append(f"  • {src} ({src_type})")
 
                         text_nodes = list(dict.fromkeys(text_nodes))
 
-                        # Summarise relations into text_context
+                        # Fast deduplication, no LLM reformatting
                         if relations:
-                            summary_prompt = (
-                                f'Summarize these knowledge graph facts into concise, '
-                                f'factual statements relevant to answering: "{question}"\n'
-                                f'Facts:\n{chr(10).join(relations)}\n\n'
-                                f'Provide ONLY the summary statements, no preamble.'
-                            )
-                            summary_res = self.client.chat.completions.create(
-                                model="gpt-4o-mini",
-                                messages=[
-                                    {"role": "system", "content": "You are a concise information summarizer. Extract key facts."},
-                                    {"role": "user", "content": summary_prompt},
-                                ],
-                            )
-                            text_context = summary_res.choices[0].message.content.strip()
+                            seen_rels = set()
+                            unique_relations = []
+                            for r in relations:
+                                if r not in seen_rels:
+                                    seen_rels.add(r)
+                                    unique_relations.append(r)
+                            text_context = "\n".join(unique_relations)
 
                 # -------------------------------------------------------- #
                 # B. Table & Image nodes  (table / image modalities)

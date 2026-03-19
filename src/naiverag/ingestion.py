@@ -274,3 +274,71 @@ def ingest_directory(directory: str = None, cfg: NaiveRAGConfig = None) -> dict:
             results[pdf_file.name] = 0
 
     return results
+
+
+def ingest_text_file(text_path: str, cfg: NaiveRAGConfig = None) -> int:
+    """
+    Ingest a plain text file into ChromaDB.
+
+    Reads the file, chunks it, embeds with OpenAI, and stores in ChromaDB.
+
+    Args:
+        text_path: Path to the .txt file.
+        cfg:       NaiveRAGConfig instance; uses module default if not provided.
+
+    Returns:
+        Number of document chunks stored.
+    """
+    cfg = cfg or default_config
+    text_path = str(Path(text_path).resolve())
+
+    if not os.path.exists(text_path):
+        raise FileNotFoundError(f"Text file not found: {text_path}")
+
+    logger.info(f"Ingesting text file: {text_path}")
+
+    with open(text_path, "r", encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+
+    if not content.strip():
+        logger.warning(f"Empty file: {text_path}")
+        return 0
+
+    # Split into page-like sections by double newlines
+    sections = [s.strip() for s in content.split("\n\n") if s.strip()]
+    docs = []
+    for i, section in enumerate(sections):
+        docs.append(Document(
+            page_content=section,
+            metadata={
+                "source": os.path.basename(text_path),
+                "section": i + 1,
+                "modality": "text",
+            }
+        ))
+
+    # Chunk
+    chunks = _chunk_documents(docs, cfg)
+    if not chunks:
+        logger.warning("No content extracted — nothing to store.")
+        return 0
+
+    # Embed + store
+    embeddings = OpenAIEmbeddings(
+        model=cfg.embedding_model,
+        openai_api_key=cfg.openai_api_key,
+    )
+
+    os.makedirs(cfg.chroma_dir, exist_ok=True)
+    vectorstore = Chroma(
+        collection_name=cfg.collection_name,
+        embedding_function=embeddings,
+        persist_directory=cfg.chroma_dir,
+    )
+
+    vectorstore.add_documents(chunks)
+    logger.info(
+        f"Stored {len(chunks)} chunks from '{os.path.basename(text_path)}' "
+        f"in ChromaDB collection '{cfg.collection_name}'"
+    )
+    return len(chunks)
