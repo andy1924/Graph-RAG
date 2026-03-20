@@ -670,14 +670,6 @@ def main():
     per_corpus_multimodal: Dict[str, Dict] = {}
     baseline_summaries: List[Dict[str, Any]] = []
 
-    modality_combos = [
-        ["text"],
-        ["text", "table"],
-        ["text", "table", "image"],
-        ["table"],
-        ["image"],
-    ]
-
     for corpus in corpora:
         logger.get_logger().info(
             f"\n{'#' * 60}\n"
@@ -692,7 +684,28 @@ def main():
         baseline_summaries.append(baseline_results[0])
 
         # Multimodal comparison pass (text+table+image)
-        multimodal_retriever = MultimodalGraphRetriever(database=corpus.corpus_id)
+        # Only run multimodal for the attention_paper corpus, which has
+        # multimodal source material in this project setup.
+        if corpus.corpus_id != "attention_paper":
+            per_corpus_multimodal[corpus.corpus_id] = {
+                "summary": {
+                    "experiment": "multimodal",
+                    "corpus_id": corpus.corpus_id,
+                    "num_questions": 0,
+                    "avg_hallucination_rate": 0.0,
+                    "avg_semantic_similarity": 0.0,
+                    "avg_f1": 0.0,
+                    "avg_text_modality_usage": 0.0,
+                    "avg_table_modality_usage": 0.0,
+                    "avg_image_modality_usage": 0.0,
+                    "skipped_reason": "Multimodal run is enabled only for attention_paper.",
+                },
+                "details": [],
+            }
+            continue
+
+        # IMPORTANT: use the actual configured Neo4j database, not corpus ID.
+        multimodal_retriever = MultimodalGraphRetriever(database=config.neo4j.database)
         multimodal_evaluator = EvaluationPipeline(f"multimodal_{corpus.corpus_id}")
         multimodal_results: List[Dict[str, Any]] = []
 
