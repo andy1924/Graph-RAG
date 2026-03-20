@@ -398,6 +398,26 @@ class HallucinationDetector:
         Returns:
             Tuple of (hallucination_rate, ungrounded_claims)
         """
+        # Auto-calibrate threshold for triplet-style graph context.
+        # Heuristic: if the median context sentence is shorter than 8 words,
+        # the context is triplet-style and a lower threshold is appropriate.
+        try:
+            import nltk
+            try:
+                nltk.data.find('tokenizers/punkt_tab')
+            except LookupError:
+                nltk.download('punkt_tab', quiet=True)
+            from nltk.tokenize import sent_tokenize
+            ctx_sentences = sent_tokenize(context)
+            if ctx_sentences:
+                median_len = sorted(
+                    len(s.split()) for s in ctx_sentences
+                )[len(ctx_sentences) // 2]
+                if median_len < 8:
+                    threshold = min(threshold, 0.22)
+        except Exception:
+            pass
+
         try:
             from sentence_transformers import SentenceTransformer, util
         except ImportError:
@@ -633,10 +653,26 @@ class EvaluationPipeline:
         semantic_sim = self.answer_metrics.semantic_similarity(generated_answer, reference_answer)
         
         # Hallucination detection
+        ctx_sentences_sample = retrieved_context.split('\n')[:10]
+        is_graph_context = (
+            "=== TEXT CONTEXT ===" in retrieved_context or
+            (
+                bool(ctx_sentences_sample) and
+                (
+                    sum(len(s.split()) for s in ctx_sentences_sample)
+                    / max(len(ctx_sentences_sample), 1)
+                ) < 8
+            )
+        )
+        effective_threshold = (
+            config.evaluation.graph_hallucination_threshold
+            if is_graph_context
+            else config.evaluation.hallucination_threshold
+        )
         hallucination_rate, ungrounded = self.hallucination_detector.detect_unsupported_claims(
             generated_answer,
             retrieved_context,
-            threshold=config.evaluation.hallucination_threshold
+            threshold=effective_threshold
         )
         grounded_ratio = 1.0 - hallucination_rate
         

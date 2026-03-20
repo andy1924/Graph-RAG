@@ -299,7 +299,33 @@ If none are relevant, return 'NONE'."""},
                     if r not in seen_rels:
                         seen_rels.add(r)
                         unique_relations.append(r)
-                
+
+                # Hub-node filter: remove triplets dominated by a single hub subject.
+                # A subject that appears in > 40% of all triplets is a hub node that adds
+                # noise rather than signal. Keep at most ceil(0.4 * len) of its triplets.
+                if unique_relations:
+                    from collections import Counter
+                    subject_counts = Counter(r.split()[0] for r in unique_relations)
+                    total = len(unique_relations)
+                    hub_threshold = 0.40
+                    hub_subjects = {
+                        s for s, c in subject_counts.items()
+                        if c / total > hub_threshold
+                    }
+                    if hub_subjects:
+                        filtered = []
+                        hub_seen: Counter = Counter()
+                        max_per_hub = math.ceil(hub_threshold * total)
+                        for rel in unique_relations:
+                            subj = rel.split()[0]
+                            if subj in hub_subjects:
+                                if hub_seen[subj] < max_per_hub:
+                                    filtered.append(rel)
+                                    hub_seen[subj] += 1
+                            else:
+                                filtered.append(rel)
+                        unique_relations = filtered
+
                 text_context = "\n".join(unique_relations)
                 return text_context, sources, list(retrieved_nodes), unique_relations
             else:
@@ -325,17 +351,33 @@ def ask_llm_with_context(user_query: str, context: str, client: OpenAI) -> str:
     Returns:
         str: Answer grounded in the provided knowledge graph context
     """
+    GRAPH_RAG_SYSTEM_PROMPT = """\
+You answer questions using ONLY the knowledge-graph triplets provided.
+Each triplet has the form: [Subject] [relationship] [Object].
+
+STRICT RULES - violating any rule counts as a hallucination:
+1. Every sentence in your answer must map directly to one or more triplets.
+2. Do NOT add explanatory or bridging clauses that are not stated in a triplet
+   (e.g. do not write "which shows strong growth" unless a triplet says that).
+3. Numbers, dates, and named entities must be copied verbatim from the triplets.
+4. If a triplet says "Tesla leader Musk", do not expand this to "Elon Musk, CEO"
+   unless a separate triplet explicitly states that relationship.
+5. If the context lacks information to answer part of the question, say exactly:
+   "The context does not contain information about [missing aspect]."
+   Never fill gaps with background knowledge.
+6. If ALL sections show "(no nodes retrieved)", respond only with:
+   "No relevant information was retrieved for this question."
+7. When you synthesise across two or more triplets to form a single claim,
+   prefix that sentence with "Combining available triplets:" so the evaluator
+   can score it as an inference rather than a direct fact.
+8. Keep your answer to 3 sentences maximum.\
+"""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You answer using ONLY the provided knowledge graph context. "
-                    "Never use external knowledge. "
-                    "If evidence is incomplete, explicitly state what is missing. "
-                    "Use at most 2 short sentences and avoid adding inferred details not explicitly present."
-                ),
+                "content": GRAPH_RAG_SYSTEM_PROMPT,
             },
             {
                 "role": "user",

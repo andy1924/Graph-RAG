@@ -691,10 +691,90 @@ def main():
         per_corpus_baseline[corpus.corpus_id] = baseline_results
         baseline_summaries.append(baseline_results[0])
 
-        # Multimodal ablation (commented out to save evaluation time)
-        # mm_results = run_multimodal_experiment(corpus, modality_combos)
-        # per_corpus_multimodal[corpus.corpus_id] = mm_results
-        per_corpus_multimodal[corpus.corpus_id] = {}
+        # Multimodal comparison pass (text+table+image)
+        multimodal_retriever = MultimodalGraphRetriever(database=corpus.corpus_id)
+        multimodal_evaluator = EvaluationPipeline(f"multimodal_{corpus.corpus_id}")
+        multimodal_results: List[Dict[str, Any]] = []
+
+        for i, (question, reference, relevant) in enumerate(
+            zip(corpus.questions, corpus.references, corpus.relevant_items)
+        ):
+            logger.get_logger().info(
+                f"\nMultimodal question {i+1}/{len(corpus)}: {question[:50]}..."
+            )
+            try:
+                start = time.time()
+                answer, metadata = multimodal_retriever.answer_with_multimodal_context(
+                    question, include_modalities=["text", "table", "image"]
+                )
+                elapsed = time.time() - start
+
+                retrieved_context = metadata.get("context", "")
+                retrieved_nodes = metadata.get("retrieved_nodes", [])
+
+                metrics = multimodal_evaluator.evaluate(
+                    question=question,
+                    generated_answer=answer,
+                    reference_answer=reference,
+                    retrieved_context=retrieved_context,
+                    retrieved_items=retrieved_nodes,
+                    relevant_items=relevant,
+                    multimodal_context={
+                        "text": metadata.get("text_content", ""),
+                        "table": metadata.get("table_content", ""),
+                        "image": metadata.get("image_content", ""),
+                    },
+                    response_time=elapsed,
+                )
+                metrics.corpus_id = corpus.corpus_id
+
+                multimodal_results.append({
+                    "question": question,
+                    "answer": answer,
+                    "retrieved_context": retrieved_context,
+                    "metrics": metrics.to_dict(),
+                    "response_time": elapsed,
+                })
+            except Exception as e:
+                logger.get_logger().warning(
+                    f"Error processing multimodal question: {str(e)}"
+                )
+
+        multimodal_retriever.close()
+
+        n_mm = len(multimodal_results)
+        per_corpus_multimodal[corpus.corpus_id] = {
+            "summary": {
+                "experiment": "multimodal",
+                "corpus_id": corpus.corpus_id,
+                "num_questions": n_mm,
+                "avg_hallucination_rate": (
+                    sum(r["metrics"]["hallucination_rate"] for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+                "avg_semantic_similarity": (
+                    sum(r["metrics"]["semantic_similarity"] for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+                "avg_f1": (
+                    sum(r["metrics"]["retrieval_f1"] for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+                "avg_text_modality_usage": (
+                    sum(r["metrics"]["text_modality_usage"] for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+                "avg_table_modality_usage": (
+                    sum(r["metrics"]["table_modality_usage"] for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+                "avg_image_modality_usage": (
+                    sum(r["metrics"]["image_modality_usage"] for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+            },
+            "details": multimodal_results,
+        }
 
     # Aggregate baseline metrics
     aggregate_baseline = _aggregate_summaries(baseline_summaries)
@@ -734,20 +814,21 @@ def main():
     # Best multimodal config across all corpora
     all_mm_entries = []
     for cid, mm_dict in per_corpus_multimodal.items():
-        for combo_name, combo_data in mm_dict.items():
-            all_mm_entries.append((f"{cid}/{combo_name}", combo_data))
+        summary = mm_dict.get("summary", {}) if isinstance(mm_dict, dict) else {}
+        if summary:
+            all_mm_entries.append((cid, summary))
 
     if all_mm_entries:
         best_config = max(
             all_mm_entries,
-            key=lambda x: x[1]['avg_f1'] - x[1]['avg_hallucination'],
+            key=lambda x: x[1].get('avg_f1', 0.0) - x[1].get('avg_hallucination_rate', 0.0),
         )
         print(f"\nBest Multimodal Configuration:")
-        print(f"  Corpus/Modalities: {best_config[0]}")
-        print(f"  F1 Score:          {best_config[1]['avg_f1']:.3f}")
+        print(f"  Corpus/Modalities: {best_config[0]}/text+table+image")
+        print(f"  F1 Score:          {best_config[1].get('avg_f1', 0.0):.3f}")
         print(
             f"  Hallucination Rate: "
-            f"{best_config[1]['avg_hallucination']:.3f}"
+            f"{best_config[1].get('avg_hallucination_rate', 0.0):.3f}"
         )
 
     logger.get_logger().info("\n[+] Evaluation complete!")

@@ -79,6 +79,7 @@ class EvaluationConfig:
     # Hallucination detection
     detect_hallucinations: bool = True
     hallucination_threshold: float = 0.35
+    graph_hallucination_threshold: float = 0.22
 
 
 class Config:

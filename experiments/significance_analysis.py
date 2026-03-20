@@ -290,6 +290,53 @@ def main() -> None:
     # ---- Run analysis ----
     results = significance_analysis(graphrag_rates, naiverag_rates)
 
+    corpus_names = ["attention_paper", "tesla", "google", "spacex"]
+    n_per_corpus = 15
+
+    per_corpus_significance = {}
+    for i, corpus_name in enumerate(corpus_names):
+        start = i * n_per_corpus
+        end = start + n_per_corpus
+        g_rates = graphrag_rates[start:end]
+        n_rates = naiverag_rates[start:end]
+
+        if not g_rates or not n_rates:
+            per_corpus_significance[corpus_name] = {
+                "graphrag_mean_hallucination": float("nan"),
+                "naiverag_mean_hallucination": float("nan"),
+                "difference": float("nan"),
+                "wilcoxon_stat": float("nan"),
+                "p_value": float("nan"),
+                "graphrag_wins": False,
+            }
+            continue
+
+        g_mean = sum(g_rates) / len(g_rates)
+        n_mean = sum(n_rates) / len(n_rates)
+
+        try:
+            differences = [g - n for g, n in zip(g_rates, n_rates)]
+            non_zero = [d for d in differences if d != 0]
+            if len(non_zero) >= 4:
+                stat, pval = wilcoxon(g_rates, n_rates, alternative='two-sided')
+                stat = float(stat)
+                pval = float(pval)
+            else:
+                stat, pval = float("nan"), float("nan")
+        except Exception:
+            stat, pval = float("nan"), float("nan")
+
+        per_corpus_significance[corpus_name] = {
+            "graphrag_mean_hallucination": round(g_mean, 4),
+            "naiverag_mean_hallucination": round(n_mean, 4),
+            "difference": round(g_mean - n_mean, 4),
+            "wilcoxon_stat": stat,
+            "p_value": pval,
+            "graphrag_wins": g_mean < n_mean,
+        }
+
+    results["per_corpus_significance"] = per_corpus_significance
+
     # ---- Print ----
     print_results_table(results)
 
