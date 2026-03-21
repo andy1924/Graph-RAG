@@ -51,6 +51,8 @@ python -m venv .venv
 # source .venv/bin/activate   # Linux/macOS
 
 pip install -r requirements.txt
+# Optional: install test/lint tooling
+# pip install -r requirements-dev.txt
 
 cp .env.example .env
 # Edit .env with your API keys and Neo4j credentials

@@ -6,7 +6,7 @@ Extracts text, tables, and images with vision-based summarization.
 import os
 import json
 import base64
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from unstructured.partition.pdf import partition_pdf
@@ -235,6 +235,7 @@ class Neo4jGraphIngestor:
     def __init__(self):
         """Initialize Neo4j ingestor."""
         from langchain_neo4j import Neo4jGraph
+        from neo4j import GraphDatabase
         
         self.graph = Neo4jGraph(
             url=config.neo4j.uri,
@@ -242,7 +243,16 @@ class Neo4jGraphIngestor:
             password=config.neo4j.password,
             database=config.neo4j.database
         )
+        self.driver = GraphDatabase.driver(
+            config.neo4j.uri,
+            auth=(config.neo4j.username, config.neo4j.password),
+        )
         self.logger = get_logger(self.__class__.__name__)
+
+    def close(self):
+        """Close Neo4j driver connection."""
+        if getattr(self, "driver", None):
+            self.driver.close()
     
     def ingest_graph_data(self, json_file: str) -> Dict[str, Any]:
         """
@@ -311,6 +321,184 @@ class Neo4jGraphIngestor:
         except Exception as e:
             self.logger.error(f"Neo4j ingestion failed: {str(e)}")
             return {"success": False, "error": str(e)}
+
+    def ingest_multimodal_elements(
+        self,
+        elements: List[MultimodalElement],
+        corpus_id: str,
+        source_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Persist multimodal elements into Neo4j with lightweight graph links.
+
+        The links are intentionally conservative to avoid perturbing existing
+        prototype behavior:
+        - (Corpus)-[:HAS_IMAGE]->(Image)
+        - (Corpus)-[:HAS_TABLE]->(Table)
+        """
+        source_path = source_path or ""
+
+        image_elements = [e for e in elements if e.type == "image"]
+        table_elements = [e for e in elements if e.type == "table"]
+
+        try:
+            with self.driver.session(database=config.neo4j.database) as session:
+                session.run(
+                    """
+                    MERGE (c:Corpus {id: $corpus_id})
+                    ON CREATE SET c.created_at = timestamp()
+                    SET c.updated_at = timestamp(), c.source_path = $source_path
+                    """,
+                    {"corpus_id": corpus_id, "source_path": source_path},
+                )
+
+                for el in image_elements:
+                    page_number = el.metadata.get("page_number")
+                    image_path = el.metadata.get("image_path", "")
+                    session.run(
+                        """
+                        MERGE (i:Image {id: $id})
+                        ON CREATE SET i.created_at = timestamp()
+                        SET i.type = 'image',
+                            i.content = $content,
+                            i.summary = $content,
+                            i.page_number = $page_number,
+                            i.image_path = $image_path,
+                            i.corpus_id = $corpus_id,
+                            i.updated_at = timestamp()
+                        WITH i
+                        MATCH (c:Corpus {id: $corpus_id})
+                        MERGE (c)-[:HAS_IMAGE]->(i)
+                        """,
+                        {
+                            "id": el.id,
+                            "content": el.content,
+                            "page_number": page_number,
+                            "image_path": image_path,
+                            "corpus_id": corpus_id,
+                        },
+                    )
+
+                for el in table_elements:
+                    page_number = el.metadata.get("page_number")
+                    raw_table = el.metadata.get("raw_table", "")
+                    session.run(
+                        """
+                        MERGE (t:Table {id: $id})
+                        ON CREATE SET t.created_at = timestamp()
+                        SET t.type = 'table',
+                            t.content = $content,
+                            t.summary = $content,
+                            t.raw_table = $raw_table,
+                            t.page_number = $page_number,
+                            t.corpus_id = $corpus_id,
+                            t.updated_at = timestamp()
+                        WITH t
+                        MATCH (c:Corpus {id: $corpus_id})
+                        MERGE (c)-[:HAS_TABLE]->(t)
+                        """,
+                        {
+                            "id": el.id,
+                            "content": el.content,
+                            "raw_table": raw_table,
+                            "page_number": page_number,
+                            "corpus_id": corpus_id,
+                        },
+                    )
+
+            return {
+                "success": True,
+                "corpus_id": corpus_id,
+                "image_nodes": len(image_elements),
+                "table_nodes": len(table_elements),
+            }
+        except Exception as e:
+            self.logger.error(f"Multimodal element ingestion failed: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+
+class MultimodalIngestion:
+    """High-level multimodal ingestion pipeline used by scripts/ingest.py."""
+
+    def __init__(self):
+        self.processor = MultimodalDocumentProcessor()
+        self.ingestor = Neo4jGraphIngestor()
+        self.logger = get_logger(self.__class__.__name__)
+
+    @staticmethod
+    def _extract_page_from_filename(filename: str) -> Optional[int]:
+        """Best-effort page extraction for names like figure-13-4.jpg."""
+        import re
+
+        match = re.search(r"figure-(\d+)-", filename.lower())
+        if match:
+            try:
+                return int(match.group(1))
+            except ValueError:
+                return None
+        return None
+
+    def _build_fallback_image_elements(self) -> List[MultimodalElement]:
+        """Create image elements from extracted image files on disk."""
+        image_dir = config.ingestion.extracted_images_dir
+        if not os.path.isdir(image_dir):
+            return []
+
+        supported = {".jpg", ".jpeg", ".png", ".webp"}
+        elements: List[MultimodalElement] = []
+
+        for fname in sorted(os.listdir(image_dir)):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in supported:
+                continue
+
+            image_path = os.path.join(image_dir, fname)
+            summary = self.processor.summarize_image(image_path)
+            elements.append(
+                MultimodalElement(
+                    id=f"img_file_{os.path.splitext(fname)[0]}",
+                    type="image",
+                    content=summary,
+                    metadata={
+                        "image_path": image_path,
+                        "page_number": self._extract_page_from_filename(fname),
+                        "source": "extracted_images_fallback",
+                    },
+                )
+            )
+
+        return elements
+
+    def ingest(self, pdf_path: str, corpus_id: str = "attention_paper") -> Dict[str, Any]:
+        """Extract multimodal elements from a PDF and persist them into Neo4j."""
+        if not os.path.exists(pdf_path):
+            return {"success": False, "error": f"PDF not found: {pdf_path}"}
+
+        elements = self.processor.process_document(pdf_path)
+        result = self.ingestor.ingest_multimodal_elements(
+            elements=elements,
+            corpus_id=corpus_id,
+            source_path=pdf_path,
+        )
+
+        # If partitioning did not produce image elements, fall back to the
+        # extracted image files on disk to ensure image modality is represented.
+        fallback_image_nodes = 0
+        if result.get("success") and result.get("image_nodes", 0) == 0:
+            fallback_elements = self._build_fallback_image_elements()
+            if fallback_elements:
+                fallback_result = self.ingestor.ingest_multimodal_elements(
+                    elements=fallback_elements,
+                    corpus_id=corpus_id,
+                    source_path=pdf_path,
+                )
+                if fallback_result.get("success"):
+                    fallback_image_nodes = fallback_result.get("image_nodes", 0)
+                    result["image_nodes"] = result.get("image_nodes", 0) + fallback_image_nodes
+
+        result["num_elements_extracted"] = len(elements)
+        result["fallback_image_nodes"] = fallback_image_nodes
+        return result
 
 
 def main():

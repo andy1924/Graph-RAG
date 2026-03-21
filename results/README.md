@@ -30,6 +30,7 @@ Each evaluation produces a JSON file with the following structure:
   "answer_quality_metrics": {
     "rouge": 0.45,
     "bert_score": 0.68,
+    "bert_score_status": "computed",
     "semantic_similarity": 0.78
   },
   
@@ -63,6 +64,21 @@ Each evaluation produces a JSON file with the following structure:
 }
 ```
 
+For comprehensive runs (`results/comprehensive_evaluation.json`), per-corpus
+summaries also include deterministic split metadata:
+
+```json
+{
+  "summary": {
+    "num_questions": 50,
+    "train_questions": 40,
+    "heldout_questions": 10,
+    "heldout_fraction": 0.2,
+    "heldout_seed": 42
+  }
+}
+```
+
 ## Key Metrics Interpretation
 
 ### Retrieval Metrics
@@ -72,7 +88,7 @@ Each evaluation produces a JSON file with the following structure:
 
 ### Answer Quality
 - **ROUGE > 0.4**: Good word-overlap with reference
-- **BERTScore > 0.75**: Strong semantic equivalence
+- **BERTScore > 0.75**: Strong semantic equivalence (only when `bert_score_status` is `computed`)
 - **Semantic Similarity > 0.75**: Good semantic match
 
 ### Hallucination

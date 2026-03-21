@@ -82,7 +82,7 @@ User Query → Entity Extraction → Graph Traversal → Context Ranking → LLM
 
 **Metrics**:
 - Retrieval quality (Precision, Recall, F1)
-- Answer quality (ROUGE, BERTScore, Semantic Similarity)
+- Answer quality (ROUGE, BERTScore [status-tracked], Semantic Similarity)
 - Hallucination detection and measurement
 - Multimodal effectiveness
 

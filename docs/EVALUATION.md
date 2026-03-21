@@ -64,6 +64,8 @@ ROUGE-N = Σ(count_match(n-gram)) / Σ(count(n-gram))
 Uses contextual embeddings from BERT to measure semantic similarity:
 - Computes token-level similarity
 - More robust to paraphrasing than ROUGE
+- Reported with explicit execution status in results (`computed`,
+  `skipped_missing_dependency`, or `failed`)
 
 #### Semantic Similarity
 Cosine similarity of sentence embeddings:
@@ -111,9 +113,10 @@ Relevance(modality) = sim(question_embedding, modality_context)
 ### 1. Benchmark Dataset Creation
 
 Create a benchmark with:
-- 20-50 diverse questions
+- 50+ diverse questions per corpus
 - Reference answers for each question
 - Relevant documents/nodes marked manually
+- Deterministic held-out split (default 80/20) for robust reporting
 
 ### 2. Baseline Comparison
 
@@ -215,6 +218,8 @@ Results are saved as JSON in `results/`:
   "retrieval_recall": 0.88,
   "retrieval_f1": 0.90,
   "rouge_score": 0.45,
+    "bert_score": 0.78,
+    "bert_score_status": "computed",
   "semantic_similarity": 0.78,
   "hallucination_rate": 0.12,
   "grounded_ratio": 0.88,

@@ -624,6 +624,7 @@ class MultimodalGraphRetriever:
     
     def __init__(self, **kwargs):
         """Initialize the multimodal retriever with OpenAI and Neo4j connections."""
+        self.corpus_id = kwargs.get("corpus_id")
         try:
             self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         except Exception:
@@ -909,17 +910,32 @@ class MultimodalGraphRetriever:
                 # -------------------------------------------------------- #
                 # B. Table & Image nodes  (table / image modalities)
                 # -------------------------------------------------------- #
-                ti_result = session.run(
-                    """
-                    MATCH (n)
-                    WHERE 'Table' IN labels(n) OR 'Image' IN labels(n)
-                    RETURN n.id AS node_id,
-                           labels(n) AS node_labels,
-                           n.content AS content,
-                           n.summary AS summary
-                    LIMIT 200
-                    """
-                )
+                if self.corpus_id:
+                    ti_result = session.run(
+                        """
+                        MATCH (n)
+                        WHERE ('Table' IN labels(n) OR 'Image' IN labels(n))
+                          AND n.corpus_id = $corpus_id
+                        RETURN n.id AS node_id,
+                               labels(n) AS node_labels,
+                               n.content AS content,
+                               n.summary AS summary
+                        LIMIT 200
+                        """,
+                        {"corpus_id": self.corpus_id},
+                    )
+                else:
+                    ti_result = session.run(
+                        """
+                        MATCH (n)
+                        WHERE 'Table' IN labels(n) OR 'Image' IN labels(n)
+                        RETURN n.id AS node_id,
+                               labels(n) AS node_labels,
+                               n.content AS content,
+                               n.summary AS summary
+                        LIMIT 200
+                        """
+                    )
 
                 table_parts: List[str] = []
                 image_parts: List[str] = []

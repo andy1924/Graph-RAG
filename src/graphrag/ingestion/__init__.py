@@ -1,10 +1,11 @@
 """Ingestion module for graph construction and storage."""
 
 from .graph_generator import GraphDocumentGenerator
-from .multimodal_ingestion import MultimodalDocumentProcessor, Neo4jGraphIngestor
+from .multimodal_ingestion import MultimodalDocumentProcessor, Neo4jGraphIngestor, MultimodalIngestion
 
 __all__ = [
     "GraphDocumentGenerator",
     "MultimodalDocumentProcessor",
     "Neo4jGraphIngestor",
+    "MultimodalIngestion",
 ]

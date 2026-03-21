@@ -31,6 +31,8 @@ class EvaluationMetrics:
     
     # Answer quality metrics
     rouge_score: float
+    bert_score: float
+    bert_score_status: str
     semantic_similarity: float
     
     # Hallucination detection
@@ -207,6 +209,47 @@ class AnswerQualityMetrics:
         except Exception as e:
             logger.warning(f"BERTScore calculation failed: {str(e)}")
             return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+    @staticmethod
+    def bert_score_with_status(
+        generated: str,
+        reference: str,
+        model_type: str = "roberta-large"
+    ) -> Dict[str, Any]:
+        """Calculate BERTScore and return both score and execution status."""
+        try:
+            from bert_score import score as bert_score_func
+        except ImportError:
+            logger.warning("bert_score not installed. Skipping BERTScore calculation.")
+            return {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "status": "skipped_missing_dependency",
+            }
+
+        try:
+            P, R, F1 = bert_score_func(
+                [generated],
+                [reference],
+                model_type=model_type,
+                lang="en",
+                verbose=False
+            )
+            return {
+                "precision": P.item(),
+                "recall": R.item(),
+                "f1": F1.item(),
+                "status": "computed",
+            }
+        except Exception as e:
+            logger.warning(f"BERTScore calculation failed: {str(e)}")
+            return {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "status": "failed",
+            }
     
     @staticmethod
     def semantic_similarity(
@@ -650,6 +693,7 @@ class EvaluationPipeline:
         
         # Answer quality metrics
         rouge = self.answer_metrics.rouge_score(generated_answer, reference_answer)
+        bert = self.answer_metrics.bert_score_with_status(generated_answer, reference_answer)
         semantic_sim = self.answer_metrics.semantic_similarity(generated_answer, reference_answer)
         
         # Hallucination detection
@@ -695,6 +739,8 @@ class EvaluationPipeline:
             retrieval_recall=recall,
             retrieval_f1=f1,
             rouge_score=rouge.get("rouge1", 0.0),
+            bert_score=bert.get("f1", 0.0),
+            bert_score_status=bert.get("status", "unknown"),
             semantic_similarity=semantic_sim,
             hallucination_rate=hallucination_rate,
             grounded_ratio=grounded_ratio,

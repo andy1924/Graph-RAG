@@ -275,7 +275,7 @@ improvement = (rag_only_hallucination_rate - graphrag_hallucination_rate) / rag_
 - Neo4j: Knowledge graph database
 - LangChain: RAG orchestration
 - Sentence Transformers: Semantic embeddings
-- ROUGE/BERTScore: Answer evaluation
+- ROUGE/BERTScore: Answer evaluation (BERTScore status tracked as computed/skipped/failed)
 - Spacy: NLP and entity recognition
 
 ### Datasets to Consider

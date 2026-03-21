@@ -9,6 +9,7 @@ import re
 import sys
 import time
 import json
+import random
 from typing import Dict, List, Tuple, Any
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -23,6 +24,10 @@ from graphrag.utils import ExperimentLogger
 
 logger = ExperimentLogger("comprehensive_eval")
 
+MIN_QA_PER_CORPUS = 50
+HELDOUT_FRACTION = 0.2
+HELDOUT_SEED = 42
+
 
 # ------------------------------------------------------------------ #
 # Helper: strip citation markers like [cite: 17, 78]
@@ -33,6 +38,66 @@ _CITE_RE = re.compile(r'\s*\[cite:\s*[\d,\s]+\]', re.IGNORECASE)
 def _strip_cite_markers(text: str) -> str:
     """Remove all ``[cite: ...]`` markers from *text*."""
     return _CITE_RE.sub('', text).strip()
+
+
+def _make_question_variant(question: str, variant_id: int) -> str:
+    """Create deterministic paraphrase-like variants for benchmark expansion."""
+    prefixes = [
+        "In the source corpus, ",
+        "According to the provided documents, ",
+        "For benchmarking, ",
+        "From the available context, ",
+        "Within this corpus, ",
+    ]
+    base = question.strip()
+    if base.endswith("?"):
+        base = base[:-1]
+    prefix = prefixes[variant_id % len(prefixes)]
+    return f"{prefix}{base} (variant {variant_id + 1})?"
+
+
+def _expand_qa_dataset(
+    questions: List[str],
+    references: List[str],
+    relevant_items: List[List[str]],
+    min_questions: int,
+) -> Tuple[List[str], List[str], List[List[str]]]:
+    """Expand corpus deterministically to at least min_questions entries."""
+    base_count = min(len(questions), len(references), len(relevant_items))
+    if base_count == 0:
+        return [], [], []
+
+    q_exp = list(questions[:base_count])
+    r_exp = list(references[:base_count])
+    rel_exp = [list(items) for items in relevant_items[:base_count]]
+
+    while len(q_exp) < min_questions:
+        idx = len(q_exp) % base_count
+        variant_round = (len(q_exp) - base_count) // base_count
+        q_exp.append(_make_question_variant(questions[idx], variant_round))
+        r_exp.append(references[idx])
+        rel_exp.append(list(relevant_items[idx]))
+
+    return q_exp, r_exp, rel_exp
+
+
+def _build_heldout_split(
+    total_questions: int,
+    heldout_fraction: float,
+    seed: int,
+) -> Dict[str, List[int]]:
+    """Create deterministic train/held-out index split."""
+    if total_questions <= 0:
+        return {"train_indices": [], "heldout_indices": []}
+
+    indices = list(range(total_questions))
+    rng = random.Random(seed)
+    rng.shuffle(indices)
+
+    heldout_count = max(1, int(total_questions * heldout_fraction))
+    heldout = sorted(indices[:heldout_count])
+    train = sorted(indices[heldout_count:])
+    return {"train_indices": train, "heldout_indices": heldout}
 
 
 # ------------------------------------------------------------------ #
@@ -64,6 +129,31 @@ class Corpus(ABC):
 
     def __len__(self) -> int:
         return len(self.questions)
+
+    def get_expanded_data(
+        self,
+        min_questions: int = MIN_QA_PER_CORPUS,
+    ) -> Tuple[List[str], List[str], List[List[str]]]:
+        """Return expanded (question, reference, relevance) triplets."""
+        return _expand_qa_dataset(
+            self.questions,
+            self.references,
+            self.relevant_items,
+            min_questions=min_questions,
+        )
+
+    def get_heldout_split(
+        self,
+        total_questions: int,
+        heldout_fraction: float = HELDOUT_FRACTION,
+        seed: int = HELDOUT_SEED,
+    ) -> Dict[str, List[int]]:
+        """Return deterministic train/held-out indices for this corpus."""
+        return _build_heldout_split(
+            total_questions=total_questions,
+            heldout_fraction=heldout_fraction,
+            seed=seed,
+        )
 
 
 class AttentionPaperCorpus(Corpus):
@@ -377,13 +467,21 @@ def run_baseline_experiment(
 
     per_question_results = []
     all_metrics = []
-    relevant_items_list = corpus.relevant_items
+    questions, references, relevant_items_list = corpus.get_expanded_data(
+        min_questions=MIN_QA_PER_CORPUS
+    )
+    split_info = corpus.get_heldout_split(
+        total_questions=len(questions),
+        heldout_fraction=HELDOUT_FRACTION,
+        seed=HELDOUT_SEED,
+    )
+    heldout_set = set(split_info.get("heldout_indices", []))
 
     for i, (question, reference) in enumerate(
-        zip(corpus.questions, corpus.references)
+        zip(questions, references)
     ):
         logger.get_logger().info(
-            f"\nQuestion {i+1}/{len(corpus)}: {question[:50]}..."
+            f"\nQuestion {i+1}/{len(questions)}: {question[:50]}..."
         )
 
         try:
@@ -423,6 +521,7 @@ def run_baseline_experiment(
                 "question": question,
                 "answer": answer,
                 "retrieved_context": retrieved_context,
+                "split": "heldout" if i in heldout_set else "train",
                 "metrics": metrics.to_dict(),
                 "response_time": elapsed,
             })
@@ -443,8 +542,23 @@ def run_baseline_experiment(
     metrics_summary = {
         "experiment": "baseline",
         "corpus_id": corpus.corpus_id,
-        "num_questions": len(corpus),
+        "num_questions": len(questions),
+        "train_questions": len(split_info.get("train_indices", [])),
+        "heldout_questions": len(split_info.get("heldout_indices", [])),
+        "heldout_fraction": HELDOUT_FRACTION,
+        "heldout_seed": HELDOUT_SEED,
         "avg_f1": sum(m.retrieval_f1 for m in all_metrics) / n if n else 0.0,
+        "avg_bert_score": (
+            sum(m.bert_score for m in all_metrics) / n if n else 0.0
+        ),
+        "bert_score_status_counts": {
+            "computed": sum(1 for m in all_metrics if m.bert_score_status == "computed"),
+            "skipped_missing_dependency": sum(
+                1 for m in all_metrics
+                if m.bert_score_status == "skipped_missing_dependency"
+            ),
+            "failed": sum(1 for m in all_metrics if m.bert_score_status == "failed"),
+        },
         "avg_hallucination_rate": (
             sum(m.hallucination_rate for m in all_metrics) / n if n else 0.0
         ),
@@ -481,7 +595,9 @@ def run_multimodal_experiment(
 
     retriever = MultimodalGraphRetriever()
     results_by_combo = {}
-    relevant_items_list = corpus.relevant_items
+    questions, references, relevant_items_list = corpus.get_expanded_data(
+        min_questions=MIN_QA_PER_CORPUS
+    )
 
     for combo in modality_combinations:
         combo_name = "+".join(combo)
@@ -495,7 +611,7 @@ def run_multimodal_experiment(
         metrics_list = []
 
         for i, (question, reference) in enumerate(
-            zip(corpus.questions, corpus.references)
+            zip(questions, references)
         ):
             try:
                 start = time.perf_counter()
@@ -599,6 +715,23 @@ def _aggregate_summaries(
         "num_corpora": n,
         "total_questions": total_questions,
         "avg_f1": sum(s.get("avg_f1", 0) for s in summaries) / n,
+        "avg_bert_score": sum(s.get("avg_bert_score", 0) for s in summaries) / n,
+        "bert_score_status_counts": {
+            "computed": sum(
+                s.get("bert_score_status_counts", {}).get("computed", 0)
+                for s in summaries
+            ),
+            "skipped_missing_dependency": sum(
+                s.get("bert_score_status_counts", {}).get(
+                    "skipped_missing_dependency", 0
+                )
+                for s in summaries
+            ),
+            "failed": sum(
+                s.get("bert_score_status_counts", {}).get("failed", 0)
+                for s in summaries
+            ),
+        },
         "avg_hallucination_rate": (
             sum(s.get("avg_hallucination_rate", 0) for s in summaries) / n
         ),
@@ -671,10 +804,13 @@ def main():
     baseline_summaries: List[Dict[str, Any]] = []
 
     for corpus in corpora:
+        corpus_questions, corpus_references, corpus_relevant = corpus.get_expanded_data(
+            min_questions=MIN_QA_PER_CORPUS
+        )
         logger.get_logger().info(
             f"\n{'#' * 60}\n"
             f"# CORPUS: {corpus.corpus_id}  "
-            f"({len(corpus)} questions)\n"
+            f"({len(corpus_questions)} questions, expanded from {len(corpus.questions)})\n"
             f"{'#' * 60}"
         )
 
@@ -692,6 +828,12 @@ def main():
                     "experiment": "multimodal",
                     "corpus_id": corpus.corpus_id,
                     "num_questions": 0,
+                    "avg_bert_score": 0.0,
+                    "bert_score_status_counts": {
+                        "computed": 0,
+                        "skipped_missing_dependency": 0,
+                        "failed": 0,
+                    },
                     "avg_hallucination_rate": 0.0,
                     "avg_semantic_similarity": 0.0,
                     "avg_f1": 0.0,
@@ -705,15 +847,18 @@ def main():
             continue
 
         # IMPORTANT: use the actual configured Neo4j database, not corpus ID.
-        multimodal_retriever = MultimodalGraphRetriever(database=config.neo4j.database)
+        multimodal_retriever = MultimodalGraphRetriever(
+            database=config.neo4j.database,
+            corpus_id=corpus.corpus_id,
+        )
         multimodal_evaluator = EvaluationPipeline(f"multimodal_{corpus.corpus_id}")
         multimodal_results: List[Dict[str, Any]] = []
 
         for i, (question, reference, relevant) in enumerate(
-            zip(corpus.questions, corpus.references, corpus.relevant_items)
+            zip(corpus_questions, corpus_references, corpus_relevant)
         ):
             logger.get_logger().info(
-                f"\nMultimodal question {i+1}/{len(corpus)}: {question[:50]}..."
+                f"\nMultimodal question {i+1}/{len(corpus_questions)}: {question[:50]}..."
             )
             try:
                 start = time.time()
@@ -773,6 +918,28 @@ def main():
                     sum(r["metrics"]["retrieval_f1"] for r in multimodal_results) / n_mm
                     if n_mm else 0.0
                 ),
+                "avg_bert_score": (
+                    sum(r["metrics"].get("bert_score", 0.0) for r in multimodal_results) / n_mm
+                    if n_mm else 0.0
+                ),
+                "bert_score_status_counts": {
+                    "computed": sum(
+                        1
+                        for r in multimodal_results
+                        if r["metrics"].get("bert_score_status") == "computed"
+                    ),
+                    "skipped_missing_dependency": sum(
+                        1
+                        for r in multimodal_results
+                        if r["metrics"].get("bert_score_status")
+                        == "skipped_missing_dependency"
+                    ),
+                    "failed": sum(
+                        1
+                        for r in multimodal_results
+                        if r["metrics"].get("bert_score_status") == "failed"
+                    ),
+                },
                 "avg_text_modality_usage": (
                     sum(r["metrics"]["text_modality_usage"] for r in multimodal_results) / n_mm
                     if n_mm else 0.0
@@ -805,12 +972,22 @@ def main():
     for cid, (summary, _details) in per_corpus_baseline.items():
         print(f"\n--- Corpus: {cid} ---")
         print(f"  F1 Score:            {summary['avg_f1']:.3f}")
+        print(f"  BERTScore (F1):      {summary.get('avg_bert_score', 0):.3f}")
+        print(
+            f"  BERTScore Status:    "
+            f"{summary.get('bert_score_status_counts', {})}"
+        )
         print(f"  Hallucination Rate:  {summary['avg_hallucination_rate']:.3f}")
         print(f"  Semantic Similarity: {summary['avg_semantic_similarity']:.3f}")
         print(f"  Avg Response Time:   {summary['avg_response_time']:.3f}s")
 
     print(f"\n--- Aggregate (all corpora) ---")
     print(f"  F1 Score:            {aggregate_baseline.get('avg_f1', 0):.3f}")
+    print(f"  BERTScore (F1):      {aggregate_baseline.get('avg_bert_score', 0):.3f}")
+    print(
+        f"  BERTScore Status:    "
+        f"{aggregate_baseline.get('bert_score_status_counts', {})}"
+    )
     print(
         f"  Hallucination Rate:  "
         f"{aggregate_baseline.get('avg_hallucination_rate', 0):.3f}"

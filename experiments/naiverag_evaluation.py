@@ -19,7 +19,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from graphrag.evaluation import EvaluationPipeline
 from graphrag.utils import ExperimentLogger
 from naiverag import NaiveRAGRetriever, config as naiverag_config
-from experiments.comprehensive_evaluation import get_all_corpora
+from experiments.comprehensive_evaluation import (
+    get_all_corpora,
+    MIN_QA_PER_CORPUS,
+    HELDOUT_FRACTION,
+    HELDOUT_SEED,
+)
 
 logger = ExperimentLogger("naiverag_eval")
 
@@ -51,12 +56,21 @@ def run_naiverag_corpus(
 
     per_question_results: List[Dict[str, Any]] = []
     all_metrics = []
+    questions, references, _relevant = corpus.get_expanded_data(
+        min_questions=MIN_QA_PER_CORPUS
+    )
+    split_info = corpus.get_heldout_split(
+        total_questions=len(questions),
+        heldout_fraction=HELDOUT_FRACTION,
+        seed=HELDOUT_SEED,
+    )
+    heldout_set = set(split_info.get("heldout_indices", []))
 
     for i, (question, reference) in enumerate(
-        zip(corpus.questions, corpus.references)
+        zip(questions, references)
     ):
         logger.get_logger().info(
-            f"\nQuestion {i + 1}/{len(corpus)}: {question[:50]}..."
+            f"\nQuestion {i + 1}/{len(questions)}: {question[:50]}..."
         )
 
         try:
@@ -91,6 +105,7 @@ def run_naiverag_corpus(
                 "answer": answer,
                 "retrieved_context": retrieved_context,
                 "sources": sources,
+                "split": "heldout" if i in heldout_set else "train",
                 "metrics": metrics.to_dict(),
                 "response_time": response_time,
             })
@@ -112,7 +127,11 @@ def run_naiverag_corpus(
     metrics_summary: Dict[str, Any] = {
         "experiment": "naiverag",
         "corpus_id": corpus.corpus_id,
-        "num_questions": len(corpus),
+        "num_questions": len(questions),
+        "train_questions": len(split_info.get("train_indices", [])),
+        "heldout_questions": len(split_info.get("heldout_indices", [])),
+        "heldout_fraction": HELDOUT_FRACTION,
+        "heldout_seed": HELDOUT_SEED,
         "questions_evaluated": n,
         "avg_hallucination_rate": (
             sum(m.hallucination_rate for m in all_metrics) / n if n else 0.0
@@ -179,9 +198,13 @@ def main():
     all_summaries: List[Dict[str, Any]] = []
 
     for corpus in corpora:
+        expanded_questions, _expanded_references, _expanded_relevant = corpus.get_expanded_data(
+            min_questions=MIN_QA_PER_CORPUS
+        )
         logger.get_logger().info(
             f"\n{'#' * 60}\n"
-            f"# CORPUS: {corpus.corpus_id}  ({len(corpus)} questions)\n"
+            f"# CORPUS: {corpus.corpus_id}  "
+            f"({len(expanded_questions)} questions, expanded from {len(corpus.questions)})\n"
             f"{'#' * 60}"
         )
 
