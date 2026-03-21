@@ -56,7 +56,7 @@ def run_naiverag_corpus(
 
     per_question_results: List[Dict[str, Any]] = []
     all_metrics = []
-    questions, references, _relevant = corpus.get_expanded_data(
+    questions, references, relevant_items = corpus.get_expanded_data(
         min_questions=MIN_QA_PER_CORPUS
     )
     split_info = corpus.get_heldout_split(
@@ -88,11 +88,14 @@ def run_naiverag_corpus(
             )
 
             # --- Evaluate ---
+            relevant = relevant_items[i] if i < len(relevant_items) else []
             metrics = evaluator.evaluate(
                 question=question,
                 generated_answer=answer,
                 reference_answer=reference,
                 retrieved_context=retrieved_context,
+                retrieved_items=retrieved_ids,
+                relevant_items=relevant,
             )
 
             metrics.avg_response_time = response_time

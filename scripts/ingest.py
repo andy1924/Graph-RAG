@@ -44,6 +44,15 @@ def ingest_graphrag(corpus_id: str) -> None:
     ingestion = MultimodalIngestion()
     print(f"  → Ingesting into Neo4j...")
     ingestion.ingest(filepath)
+    enrich_result = ingestion.ingestor.enrich_quantitative_properties()
+    if enrich_result.get("success"):
+        print(
+            "  → Quantitative enrichment: "
+            f"complexity={enrich_result.get('complexity_updates', 0)}, "
+            f"BLEU={enrich_result.get('bleu_property_updates', 0)}"
+        )
+    else:
+        print(f"  ! Quantitative enrichment failed: {enrich_result.get('error')}")
     print(f"  ✓ Neo4j ingestion complete")
 
 
