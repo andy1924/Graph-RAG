@@ -3,12 +3,15 @@ Configuration management for GraphRAG system.
 Handles environment variables, model selection, and hyperparameters.
 """
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()
+
+_config_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -91,6 +94,24 @@ class Config:
         self.ingestion = IngestionConfig()
         self.retrieval = RetrievalConfig()
         self.evaluation = EvaluationConfig()
+
+        # --- Log hallucination thresholds at startup ---
+        _config_logger.info(
+            f"[Config] Evaluation hallucination thresholds: "
+            f"hallucination_threshold={self.evaluation.hallucination_threshold}, "
+            f"graph_hallucination_threshold={self.evaluation.graph_hallucination_threshold}"
+        )
+        # Validate thresholds are in a reasonable range
+        for name, val in [
+            ("hallucination_threshold", self.evaluation.hallucination_threshold),
+            ("graph_hallucination_threshold", self.evaluation.graph_hallucination_threshold),
+        ]:
+            if val < 0.1 or val > 0.8:
+                _config_logger.warning(
+                    f"[Config] {name}={val} is outside the recommended range "
+                    f"[0.1, 0.8]. This may cause all sentences to trivially "
+                    f"pass or fail grounding checks."
+                )
     
     @classmethod
     def from_env(cls) -> "Config":

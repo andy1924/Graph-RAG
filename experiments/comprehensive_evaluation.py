@@ -100,6 +100,50 @@ def _build_heldout_split(
     return {"train_indices": train, "heldout_indices": heldout}
 
 
+def _parse_context_modalities(context: str) -> Dict[str, str]:
+    """
+    Parse retrieved context string to extract text, table, and image sections.
+    
+    Splits the context string on section headers:
+    - === TEXT CONTEXT ===
+    - === TABLE CONTEXT ===
+    - === IMAGE CONTEXT ===
+    
+    Args:
+        context: Full retrieved context string with section headers
+        
+    Returns:
+        Dictionary mapping modality names to their content strings.
+        Missing sections default to empty strings.
+    """
+    sections = {"text": "", "table": "", "image": ""}
+    
+    headers = {
+        "text": "=== TEXT CONTEXT ===",
+        "table": "=== TABLE CONTEXT ===",
+        "image": "=== IMAGE CONTEXT ===",
+    }
+    
+    for modality, header in headers.items():
+        if header in context:
+            start_idx = context.index(header) + len(header)
+            
+            # Find the next header or end of text
+            remaining = context[start_idx:]
+            
+            # Find the next section header
+            next_header_idx = len(remaining)
+            for other_header in headers.values():
+                if other_header != header and other_header in remaining:
+                    idx = remaining.index(other_header)
+                    if idx < next_header_idx:
+                        next_header_idx = idx
+            
+            sections[modality] = remaining[:next_header_idx].strip()
+    
+    return sections
+
+
 # ------------------------------------------------------------------ #
 # Corpus base class + concrete implementations
 # ------------------------------------------------------------------ #
@@ -504,6 +548,9 @@ def run_baseline_experiment(
                 relevant_items_list[i] if i < len(relevant_items_list) else []
             )
 
+            # Parse modality sections from retrieved context
+            multimodal_context = _parse_context_modalities(retrieved_context)
+
             metrics = evaluator.evaluate(
                 question=question,
                 generated_answer=answer,
@@ -511,6 +558,7 @@ def run_baseline_experiment(
                 retrieved_context=retrieved_context,
                 retrieved_items=retrieved_nodes,
                 relevant_items=relevant,
+                multimodal_context=multimodal_context,
                 response_time=elapsed,
             )
             metrics.corpus_id = corpus.corpus_id
@@ -539,6 +587,25 @@ def run_baseline_experiment(
 
     # Aggregate metrics
     n = len(all_metrics)
+
+    # Filter out None hallucination rates for aggregation
+    valid_hallucination_metrics = [
+        m for m in all_metrics if m.hallucination_rate is not None
+    ]
+    none_hallucination_count = n - len(valid_hallucination_metrics)
+    if none_hallucination_count > 0:
+        logger.get_logger().warning(
+            f"[{corpus.corpus_id}] {none_hallucination_count}/{n} questions "
+            f"returned hallucination_rate=None (detector failed). "
+            f"These are excluded from the average."
+        )
+
+    avg_hallucination = (
+        sum(m.hallucination_rate for m in valid_hallucination_metrics)
+        / len(valid_hallucination_metrics)
+        if valid_hallucination_metrics else None
+    )
+
     metrics_summary = {
         "experiment": "baseline",
         "corpus_id": corpus.corpus_id,
@@ -559,9 +626,8 @@ def run_baseline_experiment(
             ),
             "failed": sum(1 for m in all_metrics if m.bert_score_status == "failed"),
         },
-        "avg_hallucination_rate": (
-            sum(m.hallucination_rate for m in all_metrics) / n if n else 0.0
-        ),
+        "avg_hallucination_rate": avg_hallucination if avg_hallucination is not None else 0.0,
+        "hallucination_none_count": none_hallucination_count,
         "avg_semantic_similarity": (
             sum(m.semantic_similarity for m in all_metrics) / n if n else 0.0
         ),
@@ -799,6 +865,13 @@ def main():
         f"{[c.corpus_id for c in corpora]}"
     )
 
+    # --- Log evaluation thresholds before starting ---
+    logger.get_logger().info(
+        f"Hallucination thresholds: "
+        f"normal={config.evaluation.hallucination_threshold}, "
+        f"graph={config.evaluation.graph_hallucination_threshold}"
+    )
+
     per_corpus_baseline: Dict[str, Tuple] = {}
     per_corpus_multimodal: Dict[str, Dict] = {}
     baseline_summaries: List[Dict[str, Any]] = []
@@ -818,6 +891,39 @@ def main():
         baseline_results = run_baseline_experiment(corpus)
         per_corpus_baseline[corpus.corpus_id] = baseline_results
         baseline_summaries.append(baseline_results[0])
+
+        # --- Sanity check: all-zero hallucination rates ---
+        summary = baseline_results[0]
+        details = baseline_results[1]
+        avg_hall = summary.get("avg_hallucination_rate", 0.0)
+        none_count = summary.get("hallucination_none_count", 0)
+        total_q = summary.get("num_questions", 0)
+
+        if none_count == total_q and total_q > 0:
+            logger.get_logger().warning(
+                f"\n{'!' * 60}\n"
+                f"WARNING [{corpus.corpus_id}]: ALL {total_q} hallucination rates are None "
+                f"(detector failed on every question). "
+                f"Verify the HallucinationDetector is running correctly.\n"
+                f"{'!' * 60}"
+            )
+        elif avg_hall == 0.0 and total_q > 0:
+            # Check if literally every valid result is 0.0
+            per_q_rates = [
+                r.get("metrics", {}).get("hallucination_rate")
+                for r in details
+            ]
+            valid_rates = [r for r in per_q_rates if r is not None]
+            if valid_rates and all(r == 0.0 for r in valid_rates):
+                logger.get_logger().warning(
+                    f"\n{'!' * 60}\n"
+                    f"WARNING [{corpus.corpus_id}]: All {len(valid_rates)} hallucination "
+                    f"rates are exactly 0.0 \u2014 this is suspicious. "
+                    f"Verify the HallucinationDetector is running correctly and "
+                    f"the threshold (graph: {config.evaluation.graph_hallucination_threshold}, "
+                    f"normal: {config.evaluation.hallucination_threshold}) is reasonable.\n"
+                    f"{'!' * 60}"
+                )
 
         # Multimodal comparison pass (text+table+image)
         # Only run multimodal for the attention_paper corpus, which has

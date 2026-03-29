@@ -3,6 +3,23 @@ Comprehensive evaluation experiment for NaiveRAG (vector-based) system.
 Mirrors experiments/comprehensive_evaluation.py for head-to-head comparison
 with GraphRAG.  Results are saved to a SEPARATE JSON file:
     results/naiverag_evaluation.json
+
+Retrieval metric note
+---------------------
+GraphRAG retrieval returns *named graph-node IDs* (e.g. "Transformer",
+"Multi-Head Attention") which are directly compared against the corpus
+`relevant_items` lists.
+
+NaiveRAG retrieval returns *text chunks* (PDF page segments).  To make
+the retrieval F1 comparable, we use **content-based entity matching**:
+for each question we scan the retrieved chunk texts and check which
+`relevant_items` entity names appear in the text.  The set of matched
+entity names is used as `retrieved_items` for precision/recall/F1.
+
+This means the metric answers: "Of the entities that *should* be covered,
+how many are *mentioned* in the retrieved chunks?"  It is a fair
+content-level comparison, though not an exact apples-to-apples match
+with graph-node retrieval.
 """
 
 import os
@@ -27,6 +44,49 @@ from experiments.comprehensive_evaluation import (
 )
 
 logger = ExperimentLogger("naiverag_eval")
+
+
+# ------------------------------------------------------------------ #
+# Content-based entity matching for retrieval metrics
+# ------------------------------------------------------------------ #
+def _match_entities_in_chunks(
+    retrieved_chunk_texts: List[str],
+    relevant_entity_names: List[str],
+) -> List[str]:
+    """Identify which relevant entity names appear in the retrieved chunks.
+
+    This bridges the gap between NaiveRAG (chunk-based retrieval) and the
+    graph-node-based ``relevant_items`` used in corpus definitions.
+
+    Matching is case-insensitive and uses word-boundary-aware substring
+    search so that e.g. "Transformer" matches "the Transformer model"
+    but not "TransformerBlock" (unless that exact entity is in the list).
+
+    Args:
+        retrieved_chunk_texts: The page_content strings of retrieved docs.
+        relevant_entity_names: The ground-truth relevant entity names
+            from the corpus definition.
+
+    Returns:
+        De-duplicated list of entity names that were found in **any**
+        retrieved chunk.
+    """
+    if not retrieved_chunk_texts or not relevant_entity_names:
+        return []
+
+    # Build a single merged text for efficient scanning
+    merged = "\n".join(retrieved_chunk_texts).lower()
+
+    matched: List[str] = []
+    for entity in relevant_entity_names:
+        # Normalise: lowercase, collapse whitespace
+        pattern = re.escape(entity.strip().lower())
+        # Allow flexible whitespace between words
+        pattern = r"\s+".join(pattern.split(r"\ "))
+        if re.search(pattern, merged):
+            matched.append(entity)
+
+    return matched
 
 
 # ------------------------------------------------------------------ #
@@ -87,14 +147,28 @@ def run_naiverag_corpus(
                 "(circular evaluation detected)"
             )
 
-            # --- Evaluate ---
+            # ---- Content-based entity matching for retrieval F1 ----
+            # NaiveRAG retrieves text chunks, not named graph nodes.
+            # We check which relevant entity names appear in the
+            # retrieved chunk texts and use the matches as
+            # `retrieved_items`.  See module docstring for rationale.
             relevant = relevant_items[i] if i < len(relevant_items) else []
+
+            # Re-fetch docs to get their page_content for matching
+            docs = retriever.vectorstore.similarity_search(
+                question, k=retriever.cfg.top_k
+            )
+            chunk_texts = [d.page_content for d in docs]
+            matched_entities = _match_entities_in_chunks(chunk_texts, relevant)
+
+            # --- Evaluate ---
             metrics = evaluator.evaluate(
                 question=question,
                 generated_answer=answer,
                 reference_answer=reference,
                 retrieved_context=retrieved_context,
-                retrieved_items=retrieved_ids,
+                # Use matched entity names (not chunk IDs) for retrieval F1
+                retrieved_items=matched_entities,
                 relevant_items=relevant,
             )
 
@@ -109,12 +183,21 @@ def run_naiverag_corpus(
                 "retrieved_context": retrieved_context,
                 "sources": sources,
                 "split": "heldout" if i in heldout_set else "train",
+                "matched_entities": matched_entities,
+                "relevant_entities": relevant,
                 "metrics": metrics.to_dict(),
                 "response_time": response_time,
             })
 
+            hall_str = (
+                f"{metrics.hallucination_rate:.3f}"
+                if metrics.hallucination_rate is not None
+                else "None"
+            )
             logger.get_logger().info(
-                f"[+] Hallucination: {metrics.hallucination_rate:.3f}, "
+                f"[+] F1: {metrics.retrieval_f1:.3f}, "
+                f"Matched: {len(matched_entities)}/{len(relevant)}, "
+                f"Hallucination: {hall_str}, "
                 f"Semantic Sim: {metrics.semantic_similarity:.3f}, "
                 f"ROUGE-1: {metrics.rouge_score:.3f}, "
                 f"Response Time: {response_time:.4f}s"
@@ -127,6 +210,11 @@ def run_naiverag_corpus(
 
     # Aggregate per-corpus
     n = len(all_metrics)
+
+    # Handle None hallucination rates from previous fix
+    valid_hall = [m for m in all_metrics if m.hallucination_rate is not None]
+    valid_grounded = [m for m in all_metrics if m.grounded_ratio is not None]
+
     metrics_summary: Dict[str, Any] = {
         "experiment": "naiverag",
         "corpus_id": corpus.corpus_id,
@@ -136,11 +224,27 @@ def run_naiverag_corpus(
         "heldout_fraction": HELDOUT_FRACTION,
         "heldout_seed": HELDOUT_SEED,
         "questions_evaluated": n,
-        "avg_hallucination_rate": (
-            sum(m.hallucination_rate for m in all_metrics) / n if n else 0.0
+        "avg_retrieval_f1": (
+            sum(m.retrieval_f1 for m in all_metrics) / n if n else 0.0
         ),
+        "avg_retrieval_precision": (
+            sum(m.retrieval_precision for m in all_metrics) / n if n else 0.0
+        ),
+        "avg_retrieval_recall": (
+            sum(m.retrieval_recall for m in all_metrics) / n if n else 0.0
+        ),
+        "retrieval_metric_note": (
+            "Content-based entity matching: relevant_items entity names "
+            "found in retrieved chunk text (case-insensitive substring)"
+        ),
+        "avg_hallucination_rate": (
+            sum(m.hallucination_rate for m in valid_hall) / len(valid_hall)
+            if valid_hall else 0.0
+        ),
+        "hallucination_none_count": n - len(valid_hall),
         "avg_grounded_ratio": (
-            sum(m.grounded_ratio for m in all_metrics) / n if n else 0.0
+            sum(m.grounded_ratio for m in valid_grounded) / len(valid_grounded)
+            if valid_grounded else 0.0
         ),
         "avg_semantic_similarity": (
             sum(m.semantic_similarity for m in all_metrics) / n if n else 0.0
@@ -222,6 +326,10 @@ def main():
     aggregate: Dict[str, Any] = {
         "num_corpora": n_total,
         "num_questions": total_questions,
+        "avg_retrieval_f1": (
+            sum(s.get("avg_retrieval_f1", 0) for s in all_summaries) / n_total
+            if n_total else 0.0
+        ),
         "avg_hallucination_rate": (
             sum(s["avg_hallucination_rate"] for s in all_summaries) / n_total
             if n_total else 0.0
@@ -249,12 +357,16 @@ def main():
     for cid, summary in per_corpus.items():
         print(f"\n--- Corpus: {cid} ---")
         print(f"  Questions Evaluated : {summary['questions_evaluated']}/{summary['num_questions']}")
+        print(f"  Retrieval F1        : {summary.get('avg_retrieval_f1', 0):.3f}")
+        print(f"  Retrieval Precision : {summary.get('avg_retrieval_precision', 0):.3f}")
+        print(f"  Retrieval Recall    : {summary.get('avg_retrieval_recall', 0):.3f}")
         print(f"  Hallucination Rate  : {summary['avg_hallucination_rate']:.3f}")
         print(f"  Semantic Similarity : {summary['avg_semantic_similarity']:.3f}")
         print(f"  ROUGE-1             : {summary['avg_rouge_score']:.3f}")
 
     print(f"\n--- Aggregate (all corpora) ---")
     print(f"  Total Questions     : {aggregate['num_questions']}")
+    print(f"  Retrieval F1        : {aggregate.get('avg_retrieval_f1', 0):.3f}")
     print(f"  Hallucination Rate  : {aggregate['avg_hallucination_rate']:.3f}")
     print(f"  Semantic Similarity : {aggregate['avg_semantic_similarity']:.3f}")
     print(f"  ROUGE-1             : {aggregate['avg_rouge_score']:.3f}")

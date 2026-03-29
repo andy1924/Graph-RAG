@@ -5,7 +5,8 @@ Measures hallucination reduction, retrieval quality, and answer generation effec
 
 import json
 import os
-from typing import Dict, List, Tuple, Any
+import traceback
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
@@ -36,8 +37,8 @@ class EvaluationMetrics:
     semantic_similarity: float
     
     # Hallucination detection
-    hallucination_rate: float
-    grounded_ratio: float
+    hallucination_rate: Optional[float]
+    grounded_ratio: Optional[float]
     
     # Coverage and efficiency
     context_coverage: float
@@ -502,12 +503,28 @@ class HallucinationDetector:
                 if similarity < threshold:
                     cosine_flagged.append(sentence)
 
+            # --- Stage 1 logging ---
+            logger.info(
+                f"[HallucinationDetector] Stage 1 (cosine, threshold={threshold:.3f}): "
+                f"{len(answer_sentences)} answer sentences, "
+                f"{len(evaluated_sentences)} evaluated (>=5 words), "
+                f"{len(cosine_flagged)} flagged as potentially ungrounded"
+            )
+
             # ========== Stage 2: NLI entailment rescue =========================
             ungrounded_claims = HallucinationDetector._nli_entailment_check(
                 cosine_flagged,
                 context_sentences,
                 context_embeddings,
                 model,
+            )
+
+            # --- Stage 2 logging ---
+            rescued_count = len(cosine_flagged) - len(ungrounded_claims)
+            logger.info(
+                f"[HallucinationDetector] Stage 2 (NLI rescue): "
+                f"{rescued_count} sentences rescued by entailment, "
+                f"{len(ungrounded_claims)} remain ungrounded"
             )
 
             # Denominator is ALL answer sentences, including short ones.
@@ -518,11 +535,20 @@ class HallucinationDetector:
                 if answer_sentences else 0
             )
 
+            logger.info(
+                f"[HallucinationDetector] Final hallucination_rate = "
+                f"{hallucination_rate:.4f} "
+                f"({len(ungrounded_claims)}/{len(answer_sentences)} sentences)"
+            )
+
             return float(hallucination_rate), ungrounded_claims
 
         except Exception as e:
-            logger.warning(f"Hallucination detection failed: {str(e)}")
-            return 0.0, []
+            logger.error(
+                f"Hallucination detection FAILED with exception — returning None.\n"
+                f"{traceback.format_exc()}"
+            )
+            return None, []
     
     @staticmethod
     def fact_consistency_check(
@@ -718,7 +744,14 @@ class EvaluationPipeline:
             retrieved_context,
             threshold=effective_threshold
         )
-        grounded_ratio = 1.0 - hallucination_rate
+        if hallucination_rate is None:
+            self.logger.warning(
+                "Hallucination detector returned None (failed). "
+                "Setting hallucination_rate=None — result should be treated as missing."
+            )
+            grounded_ratio = None
+        else:
+            grounded_ratio = 1.0 - hallucination_rate
         
         # Multimodal metrics
         text_usage = table_usage = image_usage = 0.0
@@ -751,7 +784,8 @@ class EvaluationPipeline:
             image_modality_usage=image_usage,
         )
         
-        self.logger.info(f"Evaluation complete. F1: {f1:.3f}, Hallucination Rate: {hallucination_rate:.3f}")
+        hall_str = f"{hallucination_rate:.3f}" if hallucination_rate is not None else "None (failed)"
+        self.logger.info(f"Evaluation complete. F1: {f1:.3f}, Hallucination Rate: {hall_str}")
         
         return metrics
     
@@ -782,9 +816,36 @@ class EvaluationPipeline:
         return filepath
 
 
+def test_hallucination_detector_sanity():
+    """Sanity test: a clearly hallucinated answer must produce hallucination_rate > 0.
+
+    Feed an answer that is completely unrelated to the context and assert
+    that the detector flags it.
+    """
+    detector = HallucinationDetector()
+    answer = "The moon is made of cheese and orbits Jupiter every two days."
+    context = (
+        "The Transformer is a neural network architecture based solely on "
+        "attention mechanisms. It was introduced in the paper 'Attention Is "
+        "All You Need' by Vaswani et al. in 2017."
+    )
+    rate, claims = detector.detect_unsupported_claims(answer, context, threshold=0.35)
+    print(f"[sanity test] hallucination_rate = {rate}, ungrounded_claims = {claims}")
+    assert rate is not None, (
+        "Hallucination detector returned None — it raised an exception internally."
+    )
+    assert rate > 0, (
+        f"Expected hallucination_rate > 0 for a clearly fabricated answer, "
+        f"but got {rate}. The detector is not working correctly."
+    )
+    print("[sanity test] PASSED ✓")
+
+
 def main():
     """CLI entry point for evaluation."""
     print("Evaluation metrics module. Use EvaluationPipeline class directly.")
+    print("Running hallucination detector sanity test...")
+    test_hallucination_detector_sanity()
 
 
 if __name__ == "__main__":
