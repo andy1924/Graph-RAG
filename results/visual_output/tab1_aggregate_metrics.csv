@@ -1,0 +1,3 @@
+System,F1,BERT Score,Hallucination Rate,Semantic Similarity,Response Time,Significance (Hallucination)
+GraphRAG,0.1304,0.8538,0.0,0.5791,5.4958,***
+Naive RAG,0.1304,0.8538,0.0382,0.8033,3.6859,***
