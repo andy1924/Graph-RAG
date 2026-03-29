@@ -35,6 +35,69 @@ NAIVERAG_RESULTS = os.path.join(RESULTS_DIR, "naiverag_evaluation.json")
 OUTPUT_PATH = os.path.join(RESULTS_DIR, "significance_analysis.json")
 
 
+def sanitize_for_json(obj: Any) -> Any:
+    """Recursively replace NaN/Infinity values with None for strict JSON."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [sanitize_for_json(v) for v in obj]
+    if isinstance(obj, tuple):
+        return [sanitize_for_json(v) for v in obj]
+    return obj
+
+
+def _compute_wilcoxon_safe(
+    graphrag_rates: List[float],
+    naiverag_rates: List[float],
+    *,
+    scope_label: str,
+) -> Dict[str, Any]:
+    """
+    Compute Wilcoxon robustly and return JSON-safe values.
+
+    Returns keys:
+      - wilcoxon_stat: float | None
+      - p_value: float | None
+      - note: optional explanation when undefined/degenerate
+    """
+    differences = [g - n for g, n in zip(graphrag_rates, naiverag_rates)]
+
+    # Mathematically undefined when all paired differences are exactly zero.
+    if differences and all(d == 0 for d in differences):
+        return {
+            "wilcoxon_stat": None,
+            "p_value": None,
+            "note": "All differences are zero; test is undefined.",
+        }
+
+    if graphrag_rates and all(v == 0 for v in graphrag_rates):
+        print(
+            f"⚠️  WARNING [{scope_label}]: GraphRAG hallucination rates are all 0.0 "
+            "(degenerate distribution). This can indicate upstream hallucination "
+            "detector saturation/bug and reduces statistical sensitivity."
+        )
+    if naiverag_rates and all(v == 0 for v in naiverag_rates):
+        print(
+            f"⚠️  WARNING [{scope_label}]: NaiveRAG hallucination rates are all 0.0 "
+            "(degenerate distribution). This can indicate upstream hallucination "
+            "detector saturation/bug and reduces statistical sensitivity."
+        )
+
+    try:
+        stat, p_val = wilcoxon(differences)
+        return {"wilcoxon_stat": float(stat), "p_value": float(p_val)}
+    except Exception as e:
+        return {
+            "wilcoxon_stat": None,
+            "p_value": None,
+            "note": f"Wilcoxon could not be computed: {e}",
+        }
+
+
 # ---------------------------------------------------------------------------
 # Core analysis function
 # ---------------------------------------------------------------------------
@@ -89,18 +152,13 @@ def significance_analysis(
     n = len(gr)
     diff = nr - gr  # positive ⇒ NaiveRAG has higher hallucination (GraphRAG is better)
 
-    # ---- Wilcoxon signed-rank test ----
-    # If all differences are zero the test is undefined; handle gracefully.
-    if np.all(diff == 0):
-        w_stat, p_val = 0.0, 1.0
-    else:
-        try:
-            w_stat, p_val = wilcoxon(diff, alternative="two-sided")
-            w_stat = float(w_stat)
-            p_val = float(p_val)
-        except ValueError:
-            # e.g. fewer than 6 non-zero differences → exact test impossible
-            w_stat, p_val = float("nan"), float("nan")
+    wilcoxon_result = _compute_wilcoxon_safe(
+        graphrag_hallucination_rates,
+        naiverag_hallucination_rates,
+        scope_label="overall",
+    )
+    w_stat = wilcoxon_result["wilcoxon_stat"]
+    p_val = wilcoxon_result["p_value"]
 
     # ---- Bootstrap 95 % CI on the mean difference ----
     rng = np.random.default_rng(random_seed)
@@ -119,7 +177,9 @@ def significance_analysis(
     effect_size = mean_diff / pooled_std if pooled_std > 0 else 0.0
 
     # ---- Human-readable interpretation ----
-    if p_val <= 0.01:
+    if p_val is None:
+        sig_label = "undefined (Wilcoxon not computable)"
+    elif p_val <= 0.01:
         sig_label = "highly significant (p ≤ 0.01)"
     elif p_val <= 0.05:
         sig_label = "significant (p ≤ 0.05)"
@@ -151,7 +211,10 @@ def significance_analysis(
         f"with a {es_label} effect size (d = {effect_size:+.4f})."
     )
 
-    return {
+    if "note" in wilcoxon_result:
+        interpretation = f"{interpretation} Note: {wilcoxon_result['note']}"
+
+    result = {
         "n_questions": int(n),
         "graphrag_mean": float(gr.mean()),
         "naiverag_mean": float(nr.mean()),
@@ -164,6 +227,11 @@ def significance_analysis(
         "interpretation": interpretation,
     }
 
+    if "note" in wilcoxon_result:
+        result["note"] = wilcoxon_result["note"]
+
+    return result
+
 
 # ---------------------------------------------------------------------------
 # Pretty-print helper
@@ -171,6 +239,9 @@ def significance_analysis(
 
 def print_results_table(results: Dict[str, Any]) -> None:
     """Print the significance analysis results as a formatted table."""
+    def _fmt_optional(value: Any, fmt: str) -> str:
+        return "null" if value is None else format(value, fmt)
+
     w = 60
     print()
     print("=" * w)
@@ -185,8 +256,8 @@ def print_results_table(results: Dict[str, Any]) -> None:
         ("NaiveRAG mean hallucination", f"{results['naiverag_mean']:.4f}"),
         ("Mean difference (Naive − Graph)", f"{results['mean_difference']:+.4f}"),
         ("", ""),
-        ("Wilcoxon signed-rank statistic", f"{results['wilcoxon_stat']:.4f}"),
-        ("p-value (two-sided)", f"{results['p_value']:.6f}"),
+        ("Wilcoxon signed-rank statistic", _fmt_optional(results.get("wilcoxon_stat"), ".4f")),
+        ("p-value (two-sided)", _fmt_optional(results.get("p_value"), ".6f")),
         ("", ""),
         ("95% Bootstrap CI (lower)", f"{results['ci_lower']:+.4f}"),
         ("95% Bootstrap CI (upper)", f"{results['ci_upper']:+.4f}"),
@@ -302,11 +373,12 @@ def main() -> None:
 
         if not g_rates or not n_rates:
             per_corpus_significance[corpus_name] = {
-                "graphrag_mean_hallucination": float("nan"),
-                "naiverag_mean_hallucination": float("nan"),
-                "difference": float("nan"),
-                "wilcoxon_stat": float("nan"),
-                "p_value": float("nan"),
+                "graphrag_mean_hallucination": None,
+                "naiverag_mean_hallucination": None,
+                "difference": None,
+                "wilcoxon_stat": None,
+                "p_value": None,
+                "note": "Insufficient per-corpus data for significance test.",
                 "graphrag_wins": False,
             }
             continue
@@ -314,24 +386,19 @@ def main() -> None:
         g_mean = sum(g_rates) / len(g_rates)
         n_mean = sum(n_rates) / len(n_rates)
 
-        try:
-            differences = [g - n for g, n in zip(g_rates, n_rates)]
-            non_zero = [d for d in differences if d != 0]
-            if len(non_zero) >= 4:
-                stat, pval = wilcoxon(g_rates, n_rates, alternative='two-sided')
-                stat = float(stat)
-                pval = float(pval)
-            else:
-                stat, pval = float("nan"), float("nan")
-        except Exception:
-            stat, pval = float("nan"), float("nan")
+        wilcoxon_result = _compute_wilcoxon_safe(
+            g_rates,
+            n_rates,
+            scope_label=f"per-corpus:{corpus_name}",
+        )
 
         per_corpus_significance[corpus_name] = {
             "graphrag_mean_hallucination": round(g_mean, 4),
             "naiverag_mean_hallucination": round(n_mean, 4),
             "difference": round(g_mean - n_mean, 4),
-            "wilcoxon_stat": stat,
-            "p_value": pval,
+            "wilcoxon_stat": wilcoxon_result["wilcoxon_stat"],
+            "p_value": wilcoxon_result["p_value"],
+            **({"note": wilcoxon_result["note"]} if "note" in wilcoxon_result else {}),
             "graphrag_wins": g_mean < n_mean,
         }
 
@@ -351,7 +418,8 @@ def main() -> None:
             },
             **results,
         }
-        json.dump(output, f, indent=4)
+        output = sanitize_for_json(output)
+        json.dump(output, f, indent=4, allow_nan=False)
 
     print(f"✅ Results saved to {OUTPUT_PATH}")
 

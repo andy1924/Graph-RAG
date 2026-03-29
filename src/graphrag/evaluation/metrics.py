@@ -5,6 +5,7 @@ Measures hallucination reduction, retrieval quality, and answer generation effec
 
 import json
 import os
+import re
 import traceback
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
@@ -64,11 +65,83 @@ class EvaluationMetrics:
 
 class RetrievalMetrics:
     """Metrics for graph retrieval quality."""
+
+    @staticmethod
+    def normalize_id(value: str) -> str:
+        """Normalize entity IDs/labels for robust matching across formatting variants."""
+        text = str(value).lower().strip()
+        text = re.sub(r'\s*\[.*?\]', '', text)  # remove bracketed citations
+        text = re.sub(r'[^a-z0-9\s]', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    @staticmethod
+    def _jaccard_similarity(left: str, right: str) -> float:
+        """Token-level Jaccard similarity used for optional soft matching."""
+        left_tokens = set(left.split())
+        right_tokens = set(right.split())
+        if not left_tokens or not right_tokens:
+            return 0.0
+        intersection = left_tokens & right_tokens
+        union = left_tokens | right_tokens
+        return len(intersection) / len(union)
+
+    @classmethod
+    def _count_matches(
+        cls,
+        retrieved_items: List[str],
+        relevant_items: List[str],
+        *,
+        normalize: bool,
+        soft_match: bool,
+        soft_threshold: float,
+    ) -> int:
+        """Count matching items with exact or optional soft token overlap matching."""
+        retrieved = [str(item) for item in retrieved_items or []]
+        relevant = [str(item) for item in relevant_items or []]
+
+        if normalize:
+            retrieved = [cls.normalize_id(item) for item in retrieved if item]
+            relevant = [cls.normalize_id(item) for item in relevant if item]
+
+        retrieved = [item for item in retrieved if item]
+        relevant = [item for item in relevant if item]
+
+        relevant_set = set(relevant)
+        matched_relevant = set()
+        exact_matches = 0
+
+        for item in set(retrieved):
+            if item in relevant_set:
+                exact_matches += 1
+                matched_relevant.add(item)
+                continue
+
+            if not soft_match:
+                continue
+
+            best_candidate = None
+            best_score = 0.0
+            for rel in relevant_set - matched_relevant:
+                score = cls._jaccard_similarity(item, rel)
+                if score > best_score:
+                    best_score = score
+                    best_candidate = rel
+
+            if best_candidate is not None and best_score >= soft_threshold:
+                exact_matches += 1
+                matched_relevant.add(best_candidate)
+
+        return exact_matches
     
     @staticmethod
     def precision(
         retrieved_items: List[str],
-        relevant_items: List[str]
+        relevant_items: List[str],
+        *,
+        normalize: bool = True,
+        soft_match: bool = False,
+        soft_threshold: float = 0.75,
     ) -> float:
         """
         Calculate precision: fraction of retrieved items that are relevant.
@@ -82,17 +155,36 @@ class RetrievalMetrics:
         """
         if not retrieved_items:
             return 0.0
-        
-        relevant_set = set(relevant_items)
-        retrieved_set = set(retrieved_items)
-        
-        correct = len(retrieved_set & relevant_set)
+
+        retrieved_processed = [str(item) for item in retrieved_items if item is not None]
+        if normalize:
+            retrieved_processed = [
+                RetrievalMetrics.normalize_id(item)
+                for item in retrieved_processed
+            ]
+            retrieved_processed = [item for item in retrieved_processed if item]
+
+        retrieved_set = set(retrieved_processed)
+        if not retrieved_set:
+            return 0.0
+
+        correct = RetrievalMetrics._count_matches(
+            list(retrieved_set),
+            relevant_items,
+            normalize=normalize,
+            soft_match=soft_match,
+            soft_threshold=soft_threshold,
+        )
         return correct / len(retrieved_set)
     
     @staticmethod
     def recall(
         retrieved_items: List[str],
-        relevant_items: List[str]
+        relevant_items: List[str],
+        *,
+        normalize: bool = True,
+        soft_match: bool = False,
+        soft_threshold: float = 0.75,
     ) -> float:
         """
         Calculate recall: fraction of relevant items that were retrieved.
@@ -106,11 +198,26 @@ class RetrievalMetrics:
         """
         if not relevant_items:
             return 1.0
-        
-        relevant_set = set(relevant_items)
-        retrieved_set = set(retrieved_items)
-        
-        correct = len(relevant_set & retrieved_set)
+
+        relevant_processed = [str(item) for item in relevant_items if item is not None]
+        if normalize:
+            relevant_processed = [
+                RetrievalMetrics.normalize_id(item)
+                for item in relevant_processed
+            ]
+            relevant_processed = [item for item in relevant_processed if item]
+
+        relevant_set = set(relevant_processed)
+        if not relevant_set:
+            return 1.0
+
+        correct = RetrievalMetrics._count_matches(
+            retrieved_items,
+            list(relevant_set),
+            normalize=normalize,
+            soft_match=soft_match,
+            soft_threshold=soft_threshold,
+        )
         return correct / len(relevant_set)
     
     @staticmethod
