@@ -1,103 +1,74 @@
-# Quick Start Guide
+﻿# Quick Start
 
-Get GraphRAG running in under 10 minutes.
+## Project Metadata
+- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
+- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
+- Organization: Mukesh Patel School of Technology and Management, NMIMS University
+- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
+- GitHub Repository: https://github.com/andy1924/Graph-RAG
 
 ## Prerequisites
+- Python 3.10+
+- Neo4j database (Aura or local)
+- OpenAI API key
 
-| Requirement | Version |
-|---|---|
-| Python | 3.10+ |
-| Neo4j | Aura (cloud) or local 5.x |
-| OpenAI API key | GPT-4o-mini access |
-
-## 1. Installation
-
+## Installation
 ```bash
-git clone https://github.com/yourusername/Graph-RAG.git
+git clone https://github.com/andy1924/Graph-RAG
 cd Graph-RAG
-
 python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Linux/macOS
-
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## 2. Environment Setup
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your credentials:
-
+## Configure Environment
+Create or edit `.env` in the repository root with valid credentials:
 ```dotenv
-OPENAI_API_KEY=sk-...
-NEO4J_URI=neo4j+s://xxxx.databases.neo4j.io
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your-password
+OPENAI_API_KEY=...
+NEO4J_URI=...
+NEO4J_USERNAME=...
+NEO4J_PASSWORD=...
 NEO4J_DATABASE=neo4j
 ```
 
-## 3. Ingest Data
-
-Ingest the Attention paper (included as a test corpus):
-
+## Minimal End-to-End Run
 ```bash
-python main.py ingest --corpus attention_paper --target naiverag
-```
-
-Ingest all available corpora:
-
-```bash
+# 1) Ingest all corpora
 python main.py ingest --all
-```
 
-## 4. Ask a Question
-
-```bash
+# 2) Query GraphRAG
 python main.py query --mode graphrag
-```
 
-Example session:
-
-```
-✓ GraphRAG retriever loaded
-
-GraphRAG Query Interface  [graphrag mode]
-============================================================
-Type your question, or 'quit' to exit.
-
-Question: What is the Transformer model?
-
-  GraphRAG → The Transformer is a transduction model that relies entirely
-  on self-attention mechanisms, dispensing with recurrence and convolutions.
-```
-
-## 5. Compare Systems
-
-Run side-by-side comparison of GraphRAG vs NaiveRAG:
-
-```bash
-python main.py query --mode both
-```
-
-## 6. Run Evaluations
-
-```bash
-# Full evaluation suite
-python main.py evaluate --all
-
-# Individual experiments
+# 3) Run evaluations
 python main.py evaluate --experiment comprehensive
 python main.py evaluate --experiment naiverag
 python main.py evaluate --experiment significance
+
+# 4) Generate plots and table
+python experiments/visualize_results.py
 ```
 
-Results are saved to `results/`.
+## Common Variants
+```bash
+# Ingest one corpus only
+python main.py ingest --corpus attention_paper
 
-## Next Steps
+# Compare GraphRAG and NaiveRAG interactively
+python main.py query --mode both
 
-- Read [ARCHITECTURE.md](ARCHITECTURE.md) to understand system design
-- Read [EVALUATION.md](EVALUATION.md) for metric definitions and analysis
-- Read [USAGE.md](USAGE.md) for advanced configuration
+# Run all evaluation scripts in sequence
+python main.py evaluate --all
+```
+
+## Expected Output Locations
+- results/comprehensive_evaluation.json
+- results/naiverag_evaluation.json
+- results/significance_analysis.json
+- results/visual_output/
+
+## Verification Checklist
+- Ingestion completes without connection errors.
+- Evaluation JSON files are generated and non-empty.
+- significance_analysis.json contains per_metric_significance.
+- visual_output contains figures and aggregate table files.
+

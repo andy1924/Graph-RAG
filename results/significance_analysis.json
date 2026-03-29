@@ -451,5 +451,74 @@
             "p_value": 0.31731050786291415,
             "graphrag_wins": true
         }
+    },
+    "per_metric_significance": {
+        "hallucination_rate": {
+            "metric": "hallucination_rate",
+            "n_pairs": 200,
+            "pairing_mode": "paired_by_key",
+            "test_used": "wilcoxon",
+            "graphrag_mean": 0.003333333333333333,
+            "naiverag_mean": 0.020416666666666666,
+            "mean_difference": -0.017083333333333336,
+            "wilcoxon_stat": 6.0,
+            "mannwhitney_u_stat": null,
+            "p_value": 0.025983679544573802,
+            "cohens_d": -0.1498172730836307
+        },
+        "semantic_similarity": {
+            "metric": "semantic_similarity",
+            "n_pairs": 200,
+            "pairing_mode": "paired_by_key",
+            "test_used": "wilcoxon",
+            "graphrag_mean": 0.5881473192572594,
+            "naiverag_mean": 0.8308004313707351,
+            "mean_difference": -0.2426531121134758,
+            "wilcoxon_stat": 403.0,
+            "mannwhitney_u_stat": null,
+            "p_value": 5.507975184429648e-32,
+            "cohens_d": -1.2229116182419444
+        },
+        "rouge_score": {
+            "metric": "rouge_score",
+            "n_pairs": 200,
+            "pairing_mode": "paired_by_key",
+            "test_used": "wilcoxon",
+            "graphrag_mean": 0.2588204968558381,
+            "naiverag_mean": 0.4856295119601128,
+            "mean_difference": -0.22680901510427465,
+            "wilcoxon_stat": 878.0,
+            "mannwhitney_u_stat": null,
+            "p_value": 6.945276894979798e-29,
+            "cohens_d": -1.15209794001019
+        },
+        "bert_score": {
+            "metric": "bert_score",
+            "n_pairs": 200,
+            "pairing_mode": "paired_by_key",
+            "test_used": "wilcoxon",
+            "graphrag_mean": 0.8604132351279259,
+            "naiverag_mean": 0.9011010318994522,
+            "mean_difference": -0.040687796771526334,
+            "wilcoxon_stat": 806.0,
+            "mannwhitney_u_stat": null,
+            "p_value": 1.6615048799248187e-29,
+            "cohens_d": -1.1542500635733821
+        },
+        "retrieval_f1": {
+            "metric": "retrieval_f1",
+            "n_pairs": 200,
+            "pairing_mode": "paired_by_key",
+            "test_used": null,
+            "graphrag_mean": 0.1095829259110052,
+            "naiverag_mean": 0.7194634026104615,
+            "mean_difference": -0.6098804766994561,
+            "wilcoxon_stat": null,
+            "mannwhitney_u_stat": null,
+            "p_value": null,
+            "cohens_d": null,
+            "comparable": false,
+            "note": "Retrieval F1 is not directly comparable across systems in current outputs: GraphRAG uses graph-node matching, while NaiveRAG uses answer-entity matching in retrieved text chunks. Harmonize retrieval definition before inferential testing."
+        }
     }
 }

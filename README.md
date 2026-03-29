@@ -1,184 +1,141 @@
-# GraphRAG: Graph-Based Retrieval-Augmented Generation
+﻿# Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
 
-> Reducing LLM hallucinations through structured knowledge graphs
-
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Neo4j](https://img.shields.io/badge/Neo4j-Aura-008CC1.svg)](https://neo4j.com)
+## Project Metadata
+- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
+- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
+- Organization: Mukesh Patel School of Technology and Management, NMIMS University
+- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
+- GitHub Repository: https://github.com/andy1924/Graph-RAG
 
 ## Overview
+This repository contains a graph-based retrieval-augmented generation pipeline and a NaiveRAG baseline. The system is designed for controlled comparison of grounding quality, hallucination behavior, and retrieval behavior across four corpora: attention_paper, tesla, google, and spacex.
 
-GraphRAG is a research system that replaces traditional vector-based retrieval (NaiveRAG) with **knowledge graph traversal** for grounding LLM responses. Documents are ingested into a Neo4j knowledge graph, and questions are answered by traversing entity relationships rather than performing similarity search over text chunks.
+The implementation includes:
+- Graph-based ingestion into Neo4j with multimodal context handling.
+- Question answering via graph retrieval and LLM response generation.
+- A NaiveRAG baseline for comparative evaluation.
+- Comprehensive experimental scripts and significance testing.
 
-### Key Contributions
-
-- **Multimodal ingestion** — text, tables, and images from PDFs are extracted, structured into a knowledge graph, and stored in Neo4j
-- **Semantic entity selection** — candidate entities are ranked by embedding similarity, then filtered by an LLM for relevance
-- **Temporal & numeric filtering** — Cypher queries are augmented with year-aware filters and numeric prioritisation to reduce retrieval noise
-- **Two-stage hallucination detection** — cosine similarity screening followed by NLI entailment rescue to accurately measure grounding
-
-## Results
-
-Evaluated across 4 corpora (60 questions total):
-
-| Metric | GraphRAG | NaiveRAG |
-|---|---|---|
-| **Hallucination Rate** | 23.3% | 6.9% |
-| **Semantic Similarity** | 63.7% | 81.1% |
-| **Retrieval F1** | 21.3% | — |
-| **Avg Response Time** | 4.58s | 4.33s |
-
-Statistical significance analysis (Wilcoxon signed-rank, p = 0.002) confirms the difference in hallucination rates is highly significant.
-
-> **Note:** NaiveRAG achieves lower hallucination through verbatim chunk retrieval, while GraphRAG trades surface-level similarity for structured, relationship-aware context. See [docs/EVALUATION.md](docs/EVALUATION.md) for detailed analysis.
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- [Neo4j Aura](https://neo4j.com/cloud/aura/) account (or local Neo4j instance)
-- OpenAI API key
-
-### Installation
-
-```bash
-git clone https://github.com/yourusername/Graph-RAG.git
-cd Graph-RAG
-
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # Linux/macOS
-
-pip install -r requirements.txt
-# Optional: install test/lint tooling
-# pip install -r requirements-dev.txt
-
-cp .env.example .env
-# Edit .env with your API keys and Neo4j credentials
+## Repository Structure
+```text
+Graph_RAG/
+├── main.py
+├── scripts/
+│   ├── ingest.py
+│   ├── query.py
+│   └── evaluate.py
+├── experiments/
+│   ├── comprehensive_evaluation.py
+│   ├── naiverag_evaluation.py
+│   ├── multimodal_ablation.py
+│   └── significance_analysis.py
+├── src/
+│   ├── graphrag/
+│   │   ├── retrieval.py
+│   │   ├── evaluation/metrics.py
+│   │   └── ingestion/
+│   └── naiverag/
+├── data/
+├── results/
+└── docs/
 ```
 
-### Usage
+## Method Summary
+1. Ingestion
+- GraphRAG: document processing and graph construction into Neo4j.
+- NaiveRAG: chunk-based retrieval index construction.
 
+2. Retrieval and Answering
+- GraphRAG: entity-centric graph context retrieval from node/edge structure.
+- NaiveRAG: chunk retrieval from text index.
+
+3. Evaluation
+- Per-question metrics include retrieval metrics, semantic similarity, ROUGE, BERTScore, hallucination rate, grounded ratio, and response time.
+- Significance analysis now reports per-metric inferential statistics.
+
+## Results Snapshot (from current results JSON)
+Aggregates below are taken from results/comprehensive_evaluation.json, results/naiverag_evaluation.json, and results/significance_analysis.json.
+
+| Metric | GraphRAG | NaiveRAG |
+|---|---:|---:|
+| Retrieval F1 | 0.1096 | 0.7195 |
+| Hallucination Rate | 0.0033 | 0.0204 |
+| Semantic Similarity | 0.5881 | 0.8308 |
+| BERTScore | 0.8604 | 0.9011 |
+| ROUGE-1 proxy | 0.2588 | 0.4856 |
+| Avg Response Time (s) | 6.0047 | 4.0152 |
+
+Important metric-definition note:
+- GraphRAG retrieval F1 is computed from graph-node matching logic.
+- NaiveRAG retrieval F1 is computed from answer-entity matching in retrieved chunks.
+- These F1 values are therefore not directly comparable without harmonized retrieval definitions.
+
+### Significance Summary (paired where aligned)
+- Hallucination rate: Wilcoxon p = 0.02598; mean difference (GraphRAG - NaiveRAG) = -0.01708.
+- Semantic similarity: Wilcoxon p = 5.51e-32; mean difference = -0.24265.
+- ROUGE-1 proxy: Wilcoxon p = 6.95e-29; mean difference = -0.22681.
+- BERTScore: Wilcoxon p = 1.66e-29; mean difference = -0.04069.
+
+## Visual Results
+- ![Overall Metric Comparison](results/visual_output/fig1_grouped_bar_chart.png)
+- ![Hallucination Distribution](results/visual_output/fig2_violin_strip_plot.png)
+- ![System Capability Profile](results/visual_output/fig3_radar_chart.png)
+- ![Per-Corpus Breakdown](results/visual_output/fig4_heatmap.png)
+- ![Aggregate Metrics Table](results/visual_output/tab1_aggregate_metrics.png)
+
+## Reproducibility
+### Environment
+- Python 3.10+
+- Neo4j (Aura or local instance)
+- OpenAI API key
+
+### Setup
 ```bash
-# Ingest a corpus into both GraphRAG (Neo4j) and NaiveRAG (ChromaDB)
-python main.py ingest --corpus attention_paper
+git clone https://github.com/andy1924/Graph-RAG
+cd Graph-RAG
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Core commands
+```bash
+# Ingestion
 python main.py ingest --all
 
-# Interactive query interface
+# Interactive query
 python main.py query --mode graphrag
-python main.py query --mode both          # side-by-side comparison
+python main.py query --mode both
 
-# Run evaluations
+# Evaluation suite
 python main.py evaluate --experiment comprehensive
 python main.py evaluate --experiment naiverag
 python main.py evaluate --experiment significance
-python main.py evaluate --all
+
+# Visualization
+python experiments/visualize_results.py
 ```
 
-## Project Structure
+## Limitations
+- Retrieval F1 definitions differ between GraphRAG and NaiveRAG; inferential comparison on F1 is intentionally disabled in significance outputs.
+- Aggregate results are sensitive to corpus composition and question formulation.
+- Response latency includes external API calls and environment-dependent variability.
 
-```
-Graph-RAG/
-├── main.py                        # Unified CLI launcher
-├── setup.py                       # Package installation
-├── requirements.txt               # Dependencies
-├── .env.example                   # Environment template
-│
-├── src/                           # Core implementation
-│   ├── graphrag/                  #   GraphRAG system
-│   │   ├── config.py              #     Configuration
-│   │   ├── retrieval.py           #     Graph retrieval + LLM answering
-│   │   ├── ingestion/             #     PDF → knowledge graph pipeline
-│   │   ├── evaluation/            #     Metrics (F1, hallucination, ROUGE)
-│   │   └── utils/                 #     Neo4j manager, logger, helpers
-│   │
-│   └── naiverag/                  #   Baseline vector retrieval
-│       ├── config.py              #     Configuration
-│       ├── retrieval.py           #     ChromaDB retrieval + LLM answering
-│       └── ingestion.py           #     PDF/text → ChromaDB pipeline
-│
-├── scripts/                       # User-facing CLI tools
-│   ├── ingest.py                  #   Data ingestion
-│   ├── query.py                   #   Interactive querying
-│   └── evaluate.py                #   Evaluation runner
-│
-├── experiments/                   # Research experiments
-│   ├── comprehensive_evaluation.py
-│   ├── naiverag_evaluation.py
-│   ├── significance_analysis.py
-│   └── multimodal_ablation.py
-│
-├── tests/                         # Test suite
-│   ├── test_graphrag.py
-│   ├── test_naiverag.py
-│   └── test_metrics.py
-│
-├── data/                          # Data storage
-│   ├── raw/                       #   Source documents (.txt)
-│   └── preprocessed/              #   Graph JSON exports
-│
-├── results/                       # Evaluation outputs
-│   ├── comprehensive_evaluation.json
-│   ├── naiverag_evaluation.json
-│   └── significance_analysis.json
-│
-└── docs/                          # Documentation
-    ├── QUICKSTART.md
-    ├── ARCHITECTURE.md
-    ├── EVALUATION.md
-    └── USAGE.md
-```
-
-## Architecture
-
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Document   │────▶│   Ingestion   │────▶│   Neo4j KG   │
-│  (PDF/Text)  │     │   Pipeline    │     │  (Entities + │
-└─────────────┘     └──────────────┘     │ Relationships)│
-                                          └──────┬───────┘
-                                                 │
-┌─────────────┐     ┌──────────────┐             │
-│   Question   │────▶│  Retrieval    │◀────────────┘
-│              │     │  Pipeline     │
-└─────────────┘     │  1. Keyword   │
-                    │     filter    │
-                    │  2. Embedding │
-                    │     ranking   │
-                    │  3. LLM entity│
-                    │     selection │
-                    │  4. Cypher    │
-                    │     traversal │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │   LLM Answer  │
-                    │  Generation   │
-                    │  (grounded)   │
-                    └──────────────┘
-```
-
-## Documentation
-
-| Document | Description |
-|---|---|
-| [Quick Start](docs/QUICKSTART.md) | Installation and first query in 10 minutes |
-| [Architecture](docs/ARCHITECTURE.md) | System design and component details |
-| [Evaluation](docs/EVALUATION.md) | Metrics, methodology, and result analysis |
-| [Usage Guide](docs/USAGE.md) | Advanced configuration and API reference |
+## Documentation Index
+- docs/QUICKSTART.md
+- docs/ARCHITECTURE.md
+- docs/EVALUATION.md
+- docs/USAGE.md
+- docs/RESEARCH_GOAL.md
 
 ## Citation
-
 ```bibtex
-@software{graphrag2026,
-    title   = {GraphRAG: Graph-Based Retrieval-Augmented Generation},
-    author  = {Deshpande, Arnav and Nimbalkar, Sarvesh and Rawat, Aadi and Gadia, Dhruv},
-    year    = {2026},
-    institution = {NMIMS Mumbai}
+@misc{graphrag2026,
+  title        = {Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)},
+  author       = {Arnav Deshpande and Sarvesh Nimbalkar and Dhruv Gadia and Aadi Rawat},
+  year         = {2026},
+  institution  = {Mukesh Patel School of Technology and Management, NMIMS University},
+  howpublished = {\url{https://github.com/andy1924/Graph-RAG}}
 }
 ```
 
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.

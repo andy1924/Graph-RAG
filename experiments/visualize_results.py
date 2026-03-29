@@ -84,6 +84,7 @@ def extract_metrics_dataframe(data: Dict[str, Dict]) -> Tuple[pd.DataFrame, Dict
             metrics_list.append({
                 "System": "GraphRAG",
                 "F1": agg.get("avg_f1", np.nan),
+                "F1 Definition": "Graph-node retrieval match",
                 "BERT Score": agg.get("avg_bert_score", np.nan),
                 "Hallucination Rate": agg.get("avg_hallucination_rate", np.nan),
                 "Semantic Similarity": agg.get("avg_semantic_similarity", np.nan),
@@ -97,7 +98,9 @@ def extract_metrics_dataframe(data: Dict[str, Dict]) -> Tuple[pd.DataFrame, Dict
             agg = naive_eval["aggregate"]
             metrics_list.append({
                 "System": "Naive RAG",
-                "F1": np.nan,  # Not available in naiverag data
+                # NaiveRAG defines retrieval F1 as answer-entity match in retrieved chunks.
+                "F1": agg.get("avg_retrieval_f1", np.nan),
+                "F1 Definition": "Answer-entity match",
                 "BERT Score": np.nan,
                 "Hallucination Rate": agg.get("avg_hallucination_rate", np.nan),
                 "Semantic Similarity": agg.get("avg_semantic_similarity", np.nan),
@@ -118,7 +121,7 @@ def extract_metrics_dataframe(data: Dict[str, Dict]) -> Tuple[pd.DataFrame, Dict
 
     # Fill NaN values with dataset mean (simple imputation)
     for col in metrics_df.columns:
-        if col != "System":
+        if col not in ["System", "F1 Definition"]:
             metrics_df[col] = metrics_df[col].fillna(metrics_df[col].mean())
 
     print(f"\n✓ Extracted metrics for {len(metrics_df)} systems")
@@ -510,6 +513,9 @@ def tab1_aggregate_metrics_table(
     if not np.isnan(pvalue):
         display_df["Significance (Hallucination)"] = significance_marker
 
+    # Clarify non-comparable F1 definitions between systems.
+    display_df["F1 Note"] = display_df["F1 Definition"]
+
     # Save as CSV
     csv_path = OUTPUT_DIR / "tab1_aggregate_metrics.csv"
     display_df.to_csv(csv_path, index=False)
@@ -554,6 +560,15 @@ def tab1_aggregate_metrics_table(
         fontsize=14,
         fontweight="bold",
         pad=20,
+    )
+
+    fig.text(
+        0.5,
+        0.02,
+        "F1 is not directly comparable across systems: GraphRAG uses graph-node retrieval match; "
+        "Naive RAG uses answer-entity match in retrieved text chunks.",
+        ha="center",
+        fontsize=9,
     )
 
     plt.tight_layout()

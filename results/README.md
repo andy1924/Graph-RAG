@@ -81,6 +81,40 @@ summaries also include deterministic split metadata:
 
 ## Key Metrics Interpretation
 
+## Cross-System F1 Comparability Note
+
+When comparing GraphRAG and NaiveRAG in aggregate outputs (including
+`results/visual_output/tab1_aggregate_metrics.csv` and the rendered table image),
+the `F1` values are **not the same underlying metric**:
+
+- GraphRAG `F1`: graph-node retrieval match (retrieved graph node IDs/labels vs expected relevant graph items).
+- NaiveRAG `F1`: answer-entity match in retrieved text chunks (`aggregate.avg_retrieval_f1` in `results/naiverag_evaluation.json`).
+
+Use these values for within-system tracking and directional diagnostics, but do not
+claim strict apples-to-apples equivalence without harmonizing retrieval metric definitions.
+
+## Multi-Metric Significance Analysis
+
+`results/significance_analysis.json` now includes a `per_metric_significance` section
+with inferential statistics for multiple per-question metrics:
+
+- `hallucination_rate`
+- `semantic_similarity`
+- `rouge_score` (ROUGE-1 proxy in current pipeline)
+- `bert_score`
+- `retrieval_f1` (explicitly labeled non-comparable unless metric definitions are harmonized)
+
+For each comparable metric, the report includes:
+
+- `mean_difference` computed as **GraphRAG - NaiveRAG**
+- rank-test statistics (`wilcoxon_stat` for paired tests, or `mannwhitney_u_stat` fallback)
+- `p_value`
+- `cohens_d` effect size
+- pairing/test metadata (`pairing_mode`, `test_used`)
+
+If paired alignment is unavailable or rank tests are undefined (for example, all paired
+differences equal zero), the report stores `null` and a descriptive `note` instead of NaN.
+
 ### Retrieval Metrics
 - **Precision > 0.9**: Excellent - Few irrelevant results
 - **Recall > 0.85**: Excellent - Most relevant results found
@@ -197,17 +231,5 @@ plt.show()
 3. **Text + Tables + Images**: F1=0.90, Hall=0.12
 
 **Conclusion**: Adding table support improves retrieval quality, but image addition shows diminishing returns.
-
----
-
-## Publishing Your Results
-
-When ready to publish:
-
-1. **Copy benchmark results** to `results/`
-2. **Document methodology** in the result file
-3. **Include statistical significance tests**
-4. **Compare with baselines**
-5. **Submit for external evaluation** (if applicable)
 
 For detailed evaluation methodology, see [../docs/EVALUATION.md](../docs/EVALUATION.md)

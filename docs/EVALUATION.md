@@ -1,311 +1,89 @@
----
-**Authors**: Arnav Deshpande, Sarvesh Nimbalkar, Aadi Rawat, Dhruv Gadia  
-**Institution**: Mukesh Patel School of Technology and Management, NMIMS, Mumbai  
-**License**: MIT License  
-**Contact**: deshpandearnavn@gmail.com  
-**Last Updated**: March 2026  
----
+﻿# Evaluation Methodology and Results
 
-# GraphRAG - Evaluation Methodology
+## Project Metadata
+- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
+- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
+- Organization: Mukesh Patel School of Technology and Management, NMIMS University
+- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
+- GitHub Repository: https://github.com/andy1924/Graph-RAG
 
-This document describes the comprehensive evaluation framework for the GraphRAG system.
+## Evaluation Scope
+The current evaluation compares GraphRAG and NaiveRAG across four corpora:
+- attention_paper
+- tesla
+- google
+- spacex
 
-## Overview
+Each system is evaluated on 200 questions total (50 per corpus).
 
-The evaluation framework measures:
-1. **Retrieval Quality** - How well the system finds relevant graph nodes
-2. **Answer Quality** - How well generated answers match reference answers
-3. **Hallucination Reduction** - The core research goal
-4. **Multimodal Effectiveness** - Benefit of including multiple modalities
+## Metric Definitions
+### Retrieval metrics
+- Precision, recall, and F1 are computed per question from retrieved items and reference-relevant items.
+- GraphRAG and NaiveRAG currently use different retrieval-target definitions; therefore retrieval F1 is not directly comparable across systems.
 
-## Evaluation Metrics
+### Answer-quality metrics
+- Semantic similarity
+- ROUGE score (ROUGE-1 proxy in current reporting)
+- BERTScore (with execution status tracking)
 
-### 1. Retrieval Metrics
+### Grounding metrics
+- Hallucination rate
+- Grounded ratio
 
-#### Precision
-```
-Precision = |Retrieved ∩ Relevant| / |Retrieved|
-```
-Measures the fraction of retrieved nodes that are actually relevant.
-- **Range**: [0, 1]
-- **Interpretation**: Higher is better
-- **Use Case**: Avoid retrieving irrelevant context
+### Efficiency
+- Average response time per question
 
-#### Recall
-```
-Recall = |Retrieved ∩ Relevant| / |Relevant|
-```
-Measures the fraction of relevant nodes that were retrieved.
-- **Range**: [0, 1]
-- **Interpretation**: Higher is better
-- **Use Case**: Ensure all relevant context is found
+## Statistical Testing
+The script experiments/significance_analysis.py reports:
+- mean difference as GraphRAG - NaiveRAG
+- Wilcoxon signed-rank test when paired alignment is available
+- Mann-Whitney U fallback when pairing is unavailable
+- Cohen's d effect size
 
-#### F1-Score
-```
-F1 = 2 × (Precision × Recall) / (Precision + Recall)
-```
-Harmonic mean of precision and recall.
-- **Range**: [0, 1]
-- **Interpretation**: Balanced measure of retrieval effectiveness
+Results are written to results/significance_analysis.json under:
+- per_corpus_significance
+- per_metric_significance
 
-### 2. Answer Quality Metrics
+## Current Aggregate Results
+Source files:
+- results/comprehensive_evaluation.json
+- results/naiverag_evaluation.json
+- results/significance_analysis.json
 
-#### ROUGE (Recall-Oriented Understudy for Gisting Evaluation)
-Measures n-gram overlap between generated and reference answers:
-- **ROUGE-1**: Unigram overlap
-- **ROUGE-2**: Bigram overlap
-- **ROUGE-L**: Longest common subsequence
+| Metric | GraphRAG | NaiveRAG |
+|---|---:|---:|
+| Retrieval F1 | 0.1096 | 0.7195 |
+| Hallucination Rate | 0.0033 | 0.0204 |
+| Semantic Similarity | 0.5881 | 0.8308 |
+| BERTScore | 0.8604 | 0.9011 |
+| ROUGE-1 proxy | 0.2588 | 0.4856 |
+| Avg Response Time (s) | 6.0047 | 4.0152 |
 
-```
-ROUGE-N = Σ(count_match(n-gram)) / Σ(count(n-gram))
-```
+Comparability note:
+- Retrieval F1 values are computed from different retrieval definitions; inferential F1 comparison is intentionally disabled in per_metric_significance.
 
-#### BERTScore
-Uses contextual embeddings from BERT to measure semantic similarity:
-- Computes token-level similarity
-- More robust to paraphrasing than ROUGE
-- Reported with explicit execution status in results (`computed`,
-  `skipped_missing_dependency`, or `failed`)
+## Per-Metric Significance Summary
+From results/significance_analysis.json (paired_by_key, Wilcoxon):
 
-#### Semantic Similarity
-Cosine similarity of sentence embeddings:
-```
-sim(a, b) = cos(embed(a), embed(b)) ∈ [0, 1]
-```
-Captures semantic equivalence beyond word overlap.
+| Metric | Mean Diff (G - N) | Test | Statistic | p-value | Cohen's d |
+|---|---:|---|---:|---:|---:|
+| Hallucination rate | -0.01708 | Wilcoxon | 6.0 | 0.02598 | -0.1498 |
+| Semantic similarity | -0.24265 | Wilcoxon | 403.0 | 5.51e-32 | -1.2229 |
+| ROUGE score | -0.22681 | Wilcoxon | 878.0 | 6.95e-29 | -1.1521 |
+| BERTScore | -0.04069 | Wilcoxon | 806.0 | 1.66e-29 | -1.1543 |
 
-### 3. Hallucination Detection
+Interpretation should be constrained to the current task setup and metric definitions.
 
-#### Unsupported Claims Detection
-Sentences in the answer that lack support in the retrieved context.
-
-**Algorithm**:
-1. Split answer into sentences
-2. For each sentence, compute semantic similarity to context
-3. Flag as hallucination if similarity < threshold (default: 0.7)
-
-**Metrics**:
-- **Hallucination Rate** = (Unsupported sentences) / (Total sentences)
-- **Grounded Ratio** = 1 - Hallucination Rate
-
-#### Fact Consistency Check
-Named entity matching between answer and context:
-```
-Consistency = |Answer Entities ∩ Context Entities| / |Answer Entities|
-```
-
-### 4. Multimodal Metrics
-
-#### Modality Coverage
-Proportion of context from each modality type:
-```
-Coverage(modality) = |Content from modality| / |Total content|
-```
-
-#### Modality Relevance
-Semantic relevance of each modality to the question:
-```
-Relevance(modality) = sim(question_embedding, modality_context)
-```
-
-## Evaluation Protocol
-
-### 1. Benchmark Dataset Creation
-
-Create a benchmark with:
-- 50+ diverse questions per corpus
-- Reference answers for each question
-- Relevant documents/nodes marked manually
-- Deterministic held-out split (default 80/20) for robust reporting
-
-### 2. Baseline Comparison
-
-Compare against:
-- **Vector similarity-only RAG**: No graph structure
-- **Basic RAG**: Random context retrieval
-- **Human performance**: Upper bound estimate
-
-### 3. Ablation Studies
-
-Systematically remove/modify components:
-
-**Multimodal Ablation**:
-- Text only
-- Text + Tables
-- Text + Images
-- Text + Tables + Images
-
-**Retrieval Strategy Ablation**:
-- Single-hop vs. Multi-hop traversal
-- With/without semantic ranking
-- Different relationship types
-
-**Graph Construction Ablation**:
-- Full extraction vs. Minimal extraction
-- Different LLM models
-- Entity/relationship filtering
-
-### 4. Statistical Analysis
-
-For each metric:
-- **Mean ± Std Dev**
-- **95% Confidence Interval**
-- **Significance tests** (t-test for comparisons)
-
-## Example Evaluation Script
-
-```python
-from graphrag.evaluation import EvaluationPipeline
-
-# Create evaluator
-evaluator = EvaluationPipeline(experiment_id="exp_001")
-
-# Evaluate a single instance
-metrics = evaluator.evaluate(
-    question="What is X?",
-    generated_answer="Generated by system",
-    reference_answer="Ground truth answer",
-    retrieved_context="Retrieved context",
-    retrieved_items=["node1", "node2"],
-    relevant_items=["node1", "node2", "node3"]
-)
-
-# Save results
-evaluator.save_results(metrics, results_dir="results")
-
-# Print summary
-print(f"F1 Score: {metrics.retrieval_f1:.3f}")
-print(f"ROUGE Score: {metrics.rouge_score:.3f}")
-print(f"Hallucination Rate: {metrics.hallucination_rate:.3f}")
-print(f"Semantic Similarity: {metrics.semantic_similarity:.3f}")
-```
-
-## Interpretation Guidelines
-
-### Strong Performance Indicators
-- ✅ F1 > 0.85: Excellent retrieval
-- ✅ ROUGE > 0.4: Good answer overlap
-- ✅ Hallucination < 0.15: Minimal fabrication
-- ✅ Semantic Similarity > 0.75: Good semantic equivalence
-
-### Weak Performance Indicators
-- ❌ F1 < 0.5: Poor retrieval; investigate graph structure
-- ❌ ROUGE < 0.2: Answer quality issues; check LLM prompts
-- ❌ Hallucination > 0.4: High fabrication; strengthen grounding
-- ❌ Missing modalities: Add multimodal processing
-
-## Running Evaluation Experiments
-
+## Reproducibility Procedure
 ```bash
-# Run comprehensive evaluation
-python experiments/comprehensive_evaluation.py
-
-# Run specific experiment
-python experiments/multimodal_ablation.py
-
-# Evaluate on benchmark
-python experiments/benchmark_evaluation.py --dataset benchmarks/dataset1
+python main.py evaluate --experiment comprehensive
+python main.py evaluate --experiment naiverag
+python main.py evaluate --experiment significance
+python experiments/visualize_results.py
 ```
 
-## Results Analysis
+## Limitations
+- Retrieval F1 cross-system inferential comparison remains invalid until retrieval targets are harmonized.
+- Hallucination and quality metrics depend on the current prompt and model configuration.
+- Response-time measurements include external API latency and are environment-dependent.
 
-Results are saved as JSON in `results/`:
-```json
-{
-  "experiment_id": "exp_001",
-  "timestamp": "2025-03-09T10:30:00",
-  "retrieval_precision": 0.92,
-  "retrieval_recall": 0.88,
-  "retrieval_f1": 0.90,
-  "rouge_score": 0.45,
-    "bert_score": 0.78,
-    "bert_score_status": "computed",
-  "semantic_similarity": 0.78,
-  "hallucination_rate": 0.12,
-  "grounded_ratio": 0.88,
-  "context_coverage": 0.65,
-  "avg_response_time": 0.34,
-  "text_modality_usage": 0.70,
-  "table_modality_usage": 0.20,
-  "image_modality_usage": 0.10
-}
-```
-
-## Visualization Tools
-
-Create visualizations:
-```python
-import json
-import matplotlib.pyplot as plt
-
-# Load results
-with open("results/evaluation_exp_001.json") as f:
-    results = json.load(f)
-
-# Plot metrics
-metrics = [
-    (f"F1={results['retrieval_f1']:.2f}", "Retrieval"),
-    (f"ROUGE={results['rouge_score']:.2f}", "Answer Quality"),
-    (f"Hall_Rate={results['hallucination_rate']:.2f}", "Hallucination"),
-]
-
-# Create bar chart
-labels = [m[1] for m in metrics]
-values = [float(m[0].split("=")[1]) for m in metrics]
-plt.bar(labels, values)
-plt.ylabel("Score")
-plt.title("GraphRAG Performance Metrics")
-plt.show()
-```
-
-## Publication Readiness Checklist
-
-- [ ] Comprehensive baseline comparison
-- [ ] Statistical significance tests
-- [ ] Ablation studies completed
-- [ ] Results reproduced (3+ runs)
-- [ ] Error analysis documented
-- [ ] Computational costs measured
-- [ ] Human evaluation (if possible)
-- [ ] Limitations discussed
-- [ ] Code and data available
-
-## Current Results
-
-As of March 2026, the following results have been obtained comparing the GraphRAG system with a NaiveRAG baseline.
-
-### 1. Overall Performance Comparison
-
-The following table compares the performance of the core GraphRAG system (Baseline) against a NaiveRAG implementation on a subset of complex questions from the "Attention Is All You Need" research paper.
-
-| Metric | NaiveRAG (Baseline) | GraphRAG (Our System) | Improvement |
-| :--- | :--- | :--- | :--- |
-| **Hallucination Rate** ↓ | 0.171 | **0.013** | **-92.4%** |
-| **Grounded Ratio** ↑ | 0.829 | **0.938** | **+13.1%** |
-| **Semantic Similarity** ↑ | **0.877** | 0.821 | -6.4% |
-| **ROUGE-L Score** ↑ | **0.507** | 0.358 | -29.4% |
-| **Avg Response Time** ↓ | **3.82s** | 7.83s | +105% |
-
-> [!IMPORTANT]
-> The primary goal of this research is represented by the **Hallucination Rate**, where GraphRAG demonstrates a significant reduction in fabrication compared to standard vector-based RAG. While NaiveRAG shows higher lexical overlap (ROUGE), it suffers from 13x more hallucinations.
-
-### 2. GraphRAG Multimodal Ablation Study
-
-We evaluated different combinations of input modalities within the GraphRAG framework to understand their impact on performance.
-
-| Modality Combination | Avg F1 | Hallucination Rate ↓ | Semantic Sim ↑ |
-| :--- | :--- | :--- | :--- |
-| **Text Only** | 0.371 | 0.081 | 0.804 |
-| **Text + Table** | 0.362 | **0.066** | 0.800 |
-| **Text + Table + Image** | 0.384 | 0.100 | **0.830** |
-| **Table Only** | 0.383 | 0.233 | 0.799 |
-| **Image Only** | **0.390** | 0.200 | 0.818 |
-
-**Key Findings:**
-- **Lowest Hallucination**: The combination of **Text + Table** provided the best grounding, likely due to the structured nature of table data being highly verifiable.
-- **Highest Semantic Fidelity**: **Text + Table + Image** provided the highest semantic similarity to reference answers, indicating more comprehensive information retrieval.
-- **Modality Robustness**: Even "Image Only" retrieval showed surprisingly high F1 scores, demonstrating the effectiveness of vision-based graph nodes.
-
----
-
-For questions about evaluation methodology, see [docs/ARCHITECTURE.md](ARCHITECTURE.md)

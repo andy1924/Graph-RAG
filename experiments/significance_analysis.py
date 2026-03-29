@@ -24,7 +24,7 @@ import sys
 from typing import Dict, Any, List, Tuple
 
 import numpy as np
-from scipy.stats import wilcoxon
+from scipy.stats import wilcoxon, mannwhitneyu
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -321,6 +321,214 @@ def _load_hallucination_rates(filepath: str, details_key: str) -> List[float]:
     return rates
 
 
+def _load_per_question_records(filepath: str) -> List[Dict[str, Any]]:
+    """Load per-question records from flat or per-corpus result formats."""
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    records: List[Dict[str, Any]] = []
+
+    # Flat format: data["details"] = [{...}, ...]
+    if "details" in data and isinstance(data["details"], list):
+        for item in data["details"]:
+            records.append(
+                {
+                    "question": item.get("question", ""),
+                    "corpus_id": item.get("corpus_id")
+                    or item.get("metrics", {}).get("corpus_id", "unknown"),
+                    "metrics": item.get("metrics", {}),
+                }
+            )
+        if records:
+            return records
+
+    # Nested format: data["per_corpus_baseline"][cid]["details"]
+    for key in ("per_corpus_baseline", "per_corpus_naiverag"):
+        if key not in data:
+            continue
+        corpus_blob = data.get(key, {})
+        for corpus_id, corpus_data in corpus_blob.items():
+            details = corpus_data.get("details", [])
+            for item in details:
+                records.append(
+                    {
+                        "question": item.get("question", ""),
+                        "corpus_id": item.get("corpus_id")
+                        or item.get("metrics", {}).get("corpus_id", corpus_id),
+                        "metrics": item.get("metrics", {}),
+                    }
+                )
+
+    return records
+
+
+def _build_metric_pairs(
+    graphrag_records: List[Dict[str, Any]],
+    naiverag_records: List[Dict[str, Any]],
+    metric_key: str,
+) -> Tuple[List[float], List[float], str]:
+    """
+    Build aligned per-question metric pairs.
+
+    Returns:
+      (graph_values, naive_values, pairing_mode)
+      pairing_mode in {"paired_by_key", "paired_by_index", "unpaired"}
+    """
+    gr_map: Dict[Tuple[str, str], float] = {}
+    nr_map: Dict[Tuple[str, str], float] = {}
+
+    for rec in graphrag_records:
+        key = (str(rec.get("corpus_id", "unknown")), str(rec.get("question", "")).strip())
+        val = rec.get("metrics", {}).get(metric_key)
+        if val is not None:
+            gr_map[key] = float(val)
+
+    for rec in naiverag_records:
+        key = (str(rec.get("corpus_id", "unknown")), str(rec.get("question", "")).strip())
+        val = rec.get("metrics", {}).get(metric_key)
+        if val is not None:
+            nr_map[key] = float(val)
+
+    common_keys = [k for k in gr_map.keys() if k in nr_map]
+    if common_keys:
+        # Preserve GraphRAG order to keep deterministic pairing.
+        gr_vals = [gr_map[k] for k in common_keys]
+        nr_vals = [nr_map[k] for k in common_keys]
+        return gr_vals, nr_vals, "paired_by_key"
+
+    # Fallback: index-aligned pairing when keys do not overlap
+    gr_vals_idx = [
+        float(rec.get("metrics", {}).get(metric_key))
+        for rec in graphrag_records
+        if rec.get("metrics", {}).get(metric_key) is not None
+    ]
+    nr_vals_idx = [
+        float(rec.get("metrics", {}).get(metric_key))
+        for rec in naiverag_records
+        if rec.get("metrics", {}).get(metric_key) is not None
+    ]
+
+    if gr_vals_idx and nr_vals_idx:
+        n = min(len(gr_vals_idx), len(nr_vals_idx))
+        return gr_vals_idx[:n], nr_vals_idx[:n], "paired_by_index"
+
+    return gr_vals_idx, nr_vals_idx, "unpaired"
+
+
+def _cohens_d(
+    graph_values: List[float],
+    naive_values: List[float],
+    *,
+    paired: bool,
+) -> float:
+    """Compute Cohen's d (paired d_z when paired=True)."""
+    gr = np.asarray(graph_values, dtype=np.float64)
+    nr = np.asarray(naive_values, dtype=np.float64)
+
+    if len(gr) == 0 or len(nr) == 0:
+        return 0.0
+
+    if paired:
+        diff = gr - nr
+        if len(diff) < 2:
+            return 0.0
+        sd = float(np.std(diff, ddof=1))
+        return float(diff.mean() / sd) if sd > 0 else 0.0
+
+    gr_var = float(np.var(gr, ddof=1)) if len(gr) > 1 else 0.0
+    nr_var = float(np.var(nr, ddof=1)) if len(nr) > 1 else 0.0
+    pooled = float(np.sqrt((gr_var + nr_var) / 2.0))
+    return float((gr.mean() - nr.mean()) / pooled) if pooled > 0 else 0.0
+
+
+def _metric_significance(
+    metric_name: str,
+    graph_values: List[float],
+    naive_values: List[float],
+    *,
+    pairing_mode: str,
+) -> Dict[str, Any]:
+    """Run paired Wilcoxon where possible; fallback to Mann-Whitney U."""
+    gr = np.asarray(graph_values, dtype=np.float64)
+    nr = np.asarray(naive_values, dtype=np.float64)
+
+    if len(gr) == 0 or len(nr) == 0:
+        return {
+            "metric": metric_name,
+            "n_pairs": 0,
+            "pairing_mode": pairing_mode,
+            "test_used": None,
+            "graphrag_mean": None,
+            "naiverag_mean": None,
+            "mean_difference": None,
+            "wilcoxon_stat": None,
+            "mannwhitney_u_stat": None,
+            "p_value": None,
+            "cohens_d": None,
+            "note": "Insufficient data for significance test.",
+        }
+
+    paired = pairing_mode in {"paired_by_key", "paired_by_index"} and len(gr) == len(nr)
+    mean_diff = float((gr - nr).mean()) if paired else float(gr.mean() - nr.mean())
+    effect_size = _cohens_d(graph_values, naive_values, paired=paired)
+
+    # Default outputs
+    test_used = None
+    wilcoxon_stat = None
+    mannwhitney_u_stat = None
+    p_value = None
+    note = None
+
+    if paired:
+        diff = gr - nr
+        if np.all(diff == 0):
+            test_used = "wilcoxon"
+            note = "All paired differences are zero; Wilcoxon is undefined."
+        else:
+            try:
+                stat, p = wilcoxon(diff)
+                test_used = "wilcoxon"
+                wilcoxon_stat = float(stat)
+                p_value = float(p)
+            except Exception as e:
+                # If paired test fails numerically, fallback to unpaired rank test.
+                try:
+                    stat, p = mannwhitneyu(gr, nr, alternative="two-sided")
+                    test_used = "mannwhitney_u"
+                    mannwhitney_u_stat = float(stat)
+                    p_value = float(p)
+                    note = f"Wilcoxon failed ({e}); used Mann-Whitney U fallback."
+                except Exception as e2:
+                    note = f"Both Wilcoxon and Mann-Whitney U failed: {e2}"
+    else:
+        try:
+            stat, p = mannwhitneyu(gr, nr, alternative="two-sided")
+            test_used = "mannwhitney_u"
+            mannwhitney_u_stat = float(stat)
+            p_value = float(p)
+            note = "Used Mann-Whitney U because paired alignment was not available."
+        except Exception as e:
+            note = f"Mann-Whitney U failed: {e}"
+
+    out = {
+        "metric": metric_name,
+        "n_pairs": int(min(len(gr), len(nr))) if paired else int(len(gr) + len(nr)),
+        "pairing_mode": pairing_mode,
+        "test_used": test_used,
+        "graphrag_mean": float(gr.mean()),
+        "naiverag_mean": float(nr.mean()),
+        # Per request: GraphRAG - NaiveRAG
+        "mean_difference": mean_diff,
+        "wilcoxon_stat": wilcoxon_stat,
+        "mannwhitney_u_stat": mannwhitney_u_stat,
+        "p_value": p_value,
+        "cohens_d": float(effect_size),
+    }
+    if note:
+        out["note"] = note
+    return out
+
+
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
@@ -358,8 +566,63 @@ def main() -> None:
         print("❌ No hallucination rates found. Aborting.")
         sys.exit(1)
 
-    # ---- Run analysis ----
+    # ---- Run analysis (hallucination legacy block) ----
     results = significance_analysis(graphrag_rates, naiverag_rates)
+
+    # ---- Multi-metric per-question significance ----
+    graphrag_records = _load_per_question_records(GRAPHRAG_RESULTS)
+    naiverag_records = _load_per_question_records(NAIVERAG_RESULTS)
+
+    per_metric_significance: Dict[str, Dict[str, Any]] = {}
+    metric_keys = {
+        "hallucination_rate": "hallucination_rate",
+        "semantic_similarity": "semantic_similarity",
+        "rouge_score": "rouge_score",
+        "bert_score": "bert_score",
+    }
+
+    for metric_name, metric_key in metric_keys.items():
+        g_vals, n_vals, pairing_mode = _build_metric_pairs(
+            graphrag_records,
+            naiverag_records,
+            metric_key,
+        )
+        per_metric_significance[metric_name] = _metric_significance(
+            metric_name,
+            g_vals,
+            n_vals,
+            pairing_mode=pairing_mode,
+        )
+
+    # Retrieval F1 is intentionally labeled non-comparable unless harmonized.
+    g_f1_vals, n_f1_vals, f1_pairing = _build_metric_pairs(
+        graphrag_records,
+        naiverag_records,
+        "retrieval_f1",
+    )
+    per_metric_significance["retrieval_f1"] = {
+        "metric": "retrieval_f1",
+        "n_pairs": int(min(len(g_f1_vals), len(n_f1_vals))),
+        "pairing_mode": f1_pairing,
+        "test_used": None,
+        "graphrag_mean": float(np.mean(g_f1_vals)) if g_f1_vals else None,
+        "naiverag_mean": float(np.mean(n_f1_vals)) if n_f1_vals else None,
+        "mean_difference": (
+            float(np.mean(np.asarray(g_f1_vals) - np.asarray(n_f1_vals)))
+            if g_f1_vals and n_f1_vals and len(g_f1_vals) == len(n_f1_vals)
+            else None
+        ),
+        "wilcoxon_stat": None,
+        "mannwhitney_u_stat": None,
+        "p_value": None,
+        "cohens_d": None,
+        "comparable": False,
+        "note": (
+            "Retrieval F1 is not directly comparable across systems in current outputs: "
+            "GraphRAG uses graph-node matching, while NaiveRAG uses answer-entity matching "
+            "in retrieved text chunks. Harmonize retrieval definition before inferential testing."
+        ),
+    }
 
     corpus_names = ["attention_paper", "tesla", "google", "spacex"]
     n_per_corpus = 15
@@ -403,6 +666,7 @@ def main() -> None:
         }
 
     results["per_corpus_significance"] = per_corpus_significance
+    results["per_metric_significance"] = per_metric_significance
 
     # ---- Print ----
     print_results_table(results)
