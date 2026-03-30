@@ -21,7 +21,7 @@ class NaiveRAGConfig:
     # --- Embeddings / LLM ---
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-    llm_model: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    llm_model: str = os.getenv("LLM_MODEL", "gpt-4o")
     vision_model: str = os.getenv("VISION_MODEL", "gpt-4o-mini")
 
     # --- Chunking ---
