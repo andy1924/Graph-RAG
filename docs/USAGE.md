@@ -3,7 +3,7 @@
 ## Project Metadata
 - Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
 - Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
-- Organization: Mukesh Patel School of Technology and Management, NMIMS University
+- Organization: Mukesh Patel School of Technology and Management,NMIMS University
 - Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
 - GitHub Repository: https://github.com/andy1924/Graph-RAG
 
