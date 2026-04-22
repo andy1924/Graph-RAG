@@ -1,44 +1,36 @@
 ﻿# Research Goal and Current Status
 
-## Project Metadata
-- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
-- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
-- Organization: Mukesh Patel School of Technology and Management, NMIMS University
-- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
-- GitHub Repository: https://github.com/andy1924/Graph-RAG
+## Core Goal
 
-## Research Objective
-The project investigates whether graph-structured retrieval can mitigate hallucination behavior in LLM question answering relative to a chunk-retrieval baseline.
+Test whether graph-structured retrieval reduces LLM hallucinations compared to chunk-based retrieval under matched evaluation conditions.
 
-## Experimental Objective
-Evaluate GraphRAG and NaiveRAG on the same corpora and question sets, then assess:
-- grounding behavior (hallucination rate)
-- answer quality (semantic similarity, ROUGE, BERTScore)
-- retrieval behavior (precision, recall, retrieval F1)
-- runtime characteristics (average response time)
+## Working Hypothesis
 
-## Current Evidence from Repository Results
-Based on results/comprehensive_evaluation.json, results/naiverag_evaluation.json, and results/significance_analysis.json:
+Entity-relation retrieval from multimodal property graph improves grounding fidelity, especially when evidence is distributed across document sections/modalities.
+
+## Experimental Objectives
+
+Measure GraphRAG vs NaiveRAG on:
+
+- grounding behavior (`hallucination_rate`, `grounded_ratio`)
+- answer quality (`semantic_similarity`, `rouge_score`, `bert_score`)
+- retrieval behavior (`precision`, `recall`, `retrieval_f1`)
+- efficiency (`avg_response_time`)
+
+## Current Evidence (Repository Outputs)
+
+From `results/comprehensive_evaluation.json`, `results/naiverag_evaluation.json`, and `results/significance_analysis.json`:
+
 - GraphRAG shows lower aggregate hallucination rate (0.0033) than NaiveRAG (0.0204).
-- NaiveRAG shows higher semantic and lexical similarity metrics in the current setup.
-- Multi-metric significance testing reports statistically significant differences for hallucination, semantic similarity, ROUGE, and BERTScore.
+- NaiveRAG shows higher semantic and lexical similarity in current setup.
+- Significance analysis reports statistically significant differences on hallucination, semantic similarity, ROUGE proxy, and BERTScore.
 
 ## Methodological Caveat
-Retrieval F1 is not currently cross-system comparable because GraphRAG and NaiveRAG use different retrieval targets in evaluation. The significance report explicitly labels this and omits inferential testing for retrieval F1 until harmonized definitions are implemented.
 
-## Limitations
-- Retrieval metric non-equivalence across systems.
-- Dependence on external API behavior and model configuration.
-- Result sensitivity to corpus-specific entity distributions and question design.
+`retrieval_f1` is not yet cross-system comparable due to differing retrieval target definitions. Inferential F1 comparison remains intentionally disabled.
 
 ## Reproducibility Plan
-1. Ingest all corpora.
-2. Run comprehensive GraphRAG evaluation.
-3. Run NaiveRAG evaluation.
-4. Run significance analysis.
-5. Generate visual outputs.
 
-Commands:
 ```bash
 python main.py ingest --all
 python main.py evaluate --experiment comprehensive
@@ -47,6 +39,13 @@ python main.py evaluate --experiment significance
 python experiments/visualize_results.py
 ```
 
-## Next Methodological Step
-Implement a harmonized retrieval target for both systems to enable valid inferential testing on retrieval F1.
+## Open Risks
+
+1. Retrieval metric non-equivalence limits strict retrieval inference.
+2. API/model behavior can shift quality and latency distributions.
+3. Corpus/question composition can influence aggregate directionality.
+
+## Next Method Step
+
+Unify retrieval target definitions across GraphRAG and NaiveRAG, then rerun per-metric significance including retrieval F1.
 

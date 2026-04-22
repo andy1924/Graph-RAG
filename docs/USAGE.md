@@ -1,14 +1,10 @@
 ﻿# Usage Guide
 
-## Project Metadata
-- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
-- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
-- Organization: Mukesh Patel School of Technology and Management, NMIMS University
-- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
-- GitHub Repository: https://github.com/andy1924/Graph-RAG
+Operational guide for ingestion, querying, evaluation, and Python API use.
 
-## Command-Line Interface
-The root launcher delegates to scripts/:
+## CLI Surface
+
+Unified launcher routes to script modules:
 
 ```bash
 python main.py ingest --help
@@ -17,18 +13,27 @@ python main.py evaluate --help
 ```
 
 ## Ingestion
+
 ```bash
-# All corpora to both systems
+# All corpora into both systems (default target=both)
 python main.py ingest --all
 
-# Single corpus to GraphRAG only
+# Single corpus into GraphRAG only
 python main.py ingest --corpus tesla --target graphrag
 
-# Single corpus to NaiveRAG only
+# Single corpus into NaiveRAG only
 python main.py ingest --corpus google --target naiverag
 ```
 
-## Querying
+Available corpora in current scripts:
+
+- `attention_paper`
+- `tesla`
+- `google`
+- `spacex`
+
+## Query Modes
+
 ```bash
 # GraphRAG only
 python main.py query --mode graphrag
@@ -36,39 +41,45 @@ python main.py query --mode graphrag
 # NaiveRAG only
 python main.py query --mode naiverag
 
-# Side-by-side output
+# Side-by-side comparison
 python main.py query --mode both
 ```
 
-## Evaluation
+## Evaluation Modes
+
 ```bash
-# GraphRAG comprehensive evaluation
+# GraphRAG comprehensive run
 python main.py evaluate --experiment comprehensive
 
-# NaiveRAG baseline evaluation
+# NaiveRAG baseline run
 python main.py evaluate --experiment naiverag
 
-# Significance testing
+# Significance analysis
 python main.py evaluate --experiment significance
 
-# Full evaluation suite
+# Full suite
 python main.py evaluate --all
 ```
 
 ## Visualization
+
 ```bash
 python experiments/visualize_results.py
 ```
-Generated outputs:
-- results/visual_output/fig1_grouped_bar_chart.png
-- results/visual_output/fig2_violin_strip_plot.png
-- results/visual_output/fig3_radar_chart.png
-- results/visual_output/fig4_heatmap.png
-- results/visual_output/tab1_aggregate_metrics.csv
-- results/visual_output/tab1_aggregate_metrics.png
+
+Generated files:
+
+- `results/visual_output/fig1_grouped_bar_chart.png`
+- `results/visual_output/fig2_violin_strip_plot.png`
+- `results/visual_output/fig3_radar_chart.png`
+- `results/visual_output/fig4_heatmap.png`
+- `results/visual_output/tab1_aggregate_metrics.csv`
+- `results/visual_output/tab1_aggregate_metrics.png`
 
 ## Python API Examples
-### GraphRAG retrieval
+
+Graph retrieval:
+
 ```python
 from graphrag.retrieval import GraphRetriever
 
@@ -78,7 +89,8 @@ print(answer)
 print(metadata.get("retrieved_nodes", []))
 ```
 
-### Multimodal retrieval
+Multimodal retrieval:
+
 ```python
 from graphrag.retrieval import MultimodalGraphRetriever
 
@@ -91,7 +103,8 @@ print(answer)
 print(metadata.get("context", ""))
 ```
 
-### Single-instance evaluation
+Single evaluation call:
+
 ```python
 from graphrag.evaluation import EvaluationPipeline
 
@@ -108,12 +121,14 @@ print(metrics.retrieval_f1, metrics.hallucination_rate)
 ```
 
 ## Operational Notes
-- Run ingestion before query/evaluation if graph and baseline stores are empty.
-- Keep OpenAI and Neo4j credentials in .env only.
-- Re-run significance analysis after updating either evaluation JSON file.
+
+- Run ingestion before query/evaluation on new environment.
+- Keep secrets in `.env`, never hardcode in scripts.
+- Recompute significance after changing either evaluation JSON file.
 
 ## Troubleshooting
-- Neo4j connection errors: verify NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, NEO4J_DATABASE.
-- Missing Python packages: install with pip install -r requirements.txt in the active environment.
-- Empty retrieval output: check ingestion completeness and corpus selection.
+
+- Neo4j auth or routing errors: verify `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`.
+- Import/package errors: activate env, run `pip install -r requirements.txt`.
+- Empty answers or thin context: re-run ingestion and confirm target corpus.
 

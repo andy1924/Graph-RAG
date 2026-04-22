@@ -14,7 +14,7 @@ setup(
     description="Efficient Multi-Modal Graph-Based RAG for Mitigating LLM Hallucinations",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/your-repo/graphrag",
+    url="https://github.com/andy1924/Graph-RAG",
     packages=find_packages("src"),
     package_dir={"": "src"},
     classifiers=[

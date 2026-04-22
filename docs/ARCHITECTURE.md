@@ -1,85 +1,96 @@
 ﻿# System Architecture
 
-## Project Metadata
-- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
-- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
-- Organization: Mukesh Patel School of Technology and Management, NMIMS University
-- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
-- GitHub Repository: https://github.com/andy1924/Graph-RAG
+Architecture for controlled GraphRAG vs NaiveRAG comparison with shared evaluation layer.
 
-## Architectural Scope
-The repository implements two retrieval pipelines that share evaluation infrastructure:
-- GraphRAG: graph-centric retrieval over Neo4j.
-- NaiveRAG: chunk-centric retrieval baseline.
+## High-Level Components
 
-The architecture is organized for controlled experimentation rather than production deployment.
+- **Ingestion Layer:** builds graph store (Neo4j) and chunk store (Chroma) from aligned corpora.
+- **Retrieval Layer:** retrieves contextual evidence via graph traversal or chunk similarity.
+- **Generation Layer:** produces answers grounded in retrieved context.
+- **Evaluation Layer:** computes per-question and aggregate metrics.
+- **Statistics Layer:** tests per-metric significance and effect size.
 
-## Code-Level Architecture
-### Entry points
-- main.py delegates to command-specific scripts.
-- scripts/ingest.py orchestrates ingestion for GraphRAG and NaiveRAG.
-- scripts/query.py provides interactive query modes.
-- scripts/evaluate.py runs experiment modules.
+## Entry-Point Topology
 
-### GraphRAG package
-- src/graphrag/ingestion/
-  - multimodal_ingestion.py: multimodal ingestion and Neo4j population.
-  - graph_generator.py: graph construction utilities.
-- src/graphrag/retrieval.py
-  - GraphRetriever, SemanticGraphRetriever, MultimodalGraphRetriever.
-- src/graphrag/evaluation/metrics.py
-  - retrieval metrics, answer quality metrics, hallucination detection, evaluation pipeline.
-- src/graphrag/utils/
-  - neo4j_manager.py, llm_client.py, logger.py, data_retriever.py.
+- `main.py`: command router (`ingest`, `query`, `evaluate`).
+- `scripts/ingest.py`: corpus ingestion orchestration.
+- `scripts/query.py`: interactive query modes.
+- `scripts/evaluate.py`: experiment dispatch.
 
-### NaiveRAG package
-- src/naiverag/ingestion.py: chunk ingestion and vector-store preparation.
-- src/naiverag/retrieval.py: baseline retrieval and answering.
-- src/naiverag/config.py: baseline-specific configuration.
+## Package-Level Breakdown
 
-### Experiment layer
-- experiments/comprehensive_evaluation.py: corpus-level GraphRAG evaluation.
-- experiments/naiverag_evaluation.py: baseline evaluation with per-question metrics.
-- experiments/significance_analysis.py: inferential testing and effect-size reporting.
-- experiments/multimodal_ablation.py: modality sensitivity analysis.
+### GraphRAG
 
-## Data and Results Artifacts
-- data/raw/: raw text corpora.
-- data/multiModalPDF/: PDF source inputs.
-- data/preprocessed/: graph JSON exports.
-- data/chroma_db/: baseline vector store.
-- results/: experiment outputs and significance reports.
-- results/visual_output/: generated figures and aggregate table image/CSV.
+- `src/graphrag/ingestion/multimodal_ingestion.py`
+  - multimodal parsing and Neo4j persistence.
+- `src/graphrag/ingestion/graph_generator.py`
+  - graph construction helpers.
+- `src/graphrag/retrieval.py`
+  - `GraphRetriever`, `SemanticGraphRetriever`, `MultimodalGraphRetriever`.
+- `src/graphrag/evaluation/metrics.py`
+  - retrieval, quality, hallucination, and pipeline metrics.
+- `src/graphrag/utils/`
+  - utility wrappers for Neo4j, LLM calls, data access, logging.
 
-## Pipeline Description
-### Ingestion pipeline
-1. Load corpus document(s).
-2. Extract text and multimodal units.
-3. Build graph entities/relations and persist to Neo4j.
-4. Build NaiveRAG chunk index for baseline runs.
+### NaiveRAG
 
-### Retrieval and generation pipeline
-1. Parse question.
-2. Retrieve supporting context:
-   - GraphRAG: node-centric graph traversal and multimodal context collection.
-   - NaiveRAG: chunk retrieval over indexed text.
-3. Generate answer from retrieved context.
-4. Return answer plus retrieval metadata.
+- `src/naiverag/ingestion.py`
+  - chunking + vector index population.
+- `src/naiverag/retrieval.py`
+  - baseline retrieval and answer generation.
+- `src/naiverag/config.py`
+  - baseline config.
 
-### Evaluation pipeline
-1. Compute retrieval metrics (precision/recall/F1).
-2. Compute answer quality metrics (ROUGE, BERTScore, semantic similarity).
-3. Compute hallucination and grounding metrics.
-4. Aggregate per-corpus and cross-corpus summaries.
-5. Run significance analysis for selected metrics.
+### Experiment Modules
+
+- `experiments/comprehensive_evaluation.py`
+- `experiments/naiverag_evaluation.py`
+- `experiments/significance_analysis.py`
+- `experiments/multimodal_ablation.py`
+- `experiments/visualize_results.py`
+
+## Data + Artifact Flow
+
+- `data/raw/`: plain-text corpora.
+- `data/multiModalPDF/`: PDF corpus inputs.
+- `data/preprocessed/`: graph data exports.
+- `data/chroma_db/`: baseline vector store state.
+- `results/`: JSON outputs from evaluations/statistics.
+- `results/visual_output/`: figures and aggregate table.
+
+## Pipeline Sequence
+
+### 1) Ingestion
+
+1. Read corpus files.
+2. Parse textual and multimodal units.
+3. Build graph entities/relations for Neo4j.
+4. Build chunk vectors for NaiveRAG baseline.
+
+### 2) Query + Answer
+
+1. Receive question.
+2. Retrieve context.
+3. Generate answer conditioned on retrieved evidence.
+4. Return answer and metadata.
+
+### 3) Evaluation + Statistics
+
+1. Compute retrieval precision/recall/F1.
+2. Compute ROUGE, BERTScore, semantic similarity.
+3. Compute grounding signals (hallucination, grounded ratio).
+4. Aggregate by corpus and globally.
+5. Run significance tests and effect-size reporting.
 
 ## Design Constraints
-- Retrieval F1 definitions differ between GraphRAG and NaiveRAG in current outputs.
-- API-dependent steps (LLM and embedding calls) introduce runtime variance.
-- Metric interpretation depends on corpus-specific entity distributions.
+
+1. `retrieval_f1` is non-equivalent across GraphRAG and NaiveRAG in current implementation.
+2. API-dependent calls (LLM/embedding) introduce runtime variance.
+3. Metric behavior depends on corpus composition and entity density.
 
 ## Reproducibility Notes
-- Use the same random seeds defined in evaluation scripts.
-- Run GraphRAG and NaiveRAG evaluations before significance analysis.
-- Regenerate visual outputs only after JSON result files are current.
+
+- Run GraphRAG and NaiveRAG evaluation before significance analysis.
+- Regenerate plots only after refreshing JSON outputs.
+- Keep seeds/config stable across reruns for cleaner comparison.
 

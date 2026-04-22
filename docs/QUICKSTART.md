@@ -1,18 +1,15 @@
 ﻿# Quick Start
 
-## Project Metadata
-- Project Title: Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)
-- Authors: Arnav Deshpande; Sarvesh Nimbalkar; Dhruv Gadia; Aadi Rawat
-- Organization: Mukesh Patel School of Technology and Management, NMIMS University
-- Contact Email: [deshpandearnavn@gmail.com](mailto:deshpandearnavn@gmail.com)
-- GitHub Repository: https://github.com/andy1924/Graph-RAG
+Minimal path to run full GraphRAG vs NaiveRAG experiment cycle.
 
-## Prerequisites
+## 1) Prerequisites
+
 - Python 3.10+
-- Neo4j database (Aura or local)
+- Neo4j (Aura or local)
 - OpenAI API key
 
-## Installation
+## 2) Install
+
 ```bash
 git clone https://github.com/andy1924/Graph-RAG
 cd Graph-RAG
@@ -21,8 +18,10 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Configure Environment
-Create or edit `.env` in the repository root with valid credentials:
+## 3) Configure Environment
+
+Create `.env` in repository root:
+
 ```dotenv
 OPENAI_API_KEY=...
 NEO4J_URI=...
@@ -31,44 +30,56 @@ NEO4J_PASSWORD=...
 NEO4J_DATABASE=neo4j
 ```
 
-## Minimal End-to-End Run
+## 4) Run End-to-End Pipeline
+
 ```bash
-# 1) Ingest all corpora
+# Ingest all corpora into GraphRAG + NaiveRAG stores
 python main.py ingest --all
 
-# 2) Query GraphRAG
+# Interactive query (GraphRAG only)
 python main.py query --mode graphrag
 
-# 3) Run evaluations
+# Comparative query (GraphRAG + NaiveRAG)
+python main.py query --mode both
+
+# Evaluation suite
 python main.py evaluate --experiment comprehensive
 python main.py evaluate --experiment naiverag
 python main.py evaluate --experiment significance
 
-# 4) Generate plots and table
+# Visual outputs
 python experiments/visualize_results.py
 ```
 
-## Common Variants
-```bash
-# Ingest one corpus only
-python main.py ingest --corpus attention_paper
+## 5) Expected Outputs
 
-# Compare GraphRAG and NaiveRAG interactively
-python main.py query --mode both
+- `results/comprehensive_evaluation.json`
+- `results/naiverag_evaluation.json`
+- `results/significance_analysis.json`
+- `results/visual_output/fig1_grouped_bar_chart.png`
+- `results/visual_output/fig2_violin_strip_plot.png`
+- `results/visual_output/fig3_radar_chart.png`
+- `results/visual_output/fig4_heatmap.png`
+- `results/visual_output/tab1_aggregate_metrics.csv`
+- `results/visual_output/tab1_aggregate_metrics.png`
+
+## 6) Fast Troubleshooting
+
+- Neo4j connection fail: recheck `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`.
+- Missing package errors: activate virtual env, rerun `pip install -r requirements.txt`.
+- Empty retrieval output: run ingestion again for target corpus.
+
+## 7) Common Variants
+
+```bash
+# Single corpus
+python main.py ingest --corpus tesla
+
+# Ingest only one pipeline
+python main.py ingest --corpus google --target naiverag
+python main.py ingest --corpus spacex --target graphrag
 
 # Run all evaluation scripts in sequence
 python main.py evaluate --all
 ```
-
-## Expected Output Locations
-- results/comprehensive_evaluation.json
-- results/naiverag_evaluation.json
-- results/significance_analysis.json
-- results/visual_output/
-
-## Verification Checklist
-- Ingestion completes without connection errors.
-- Evaluation JSON files are generated and non-empty.
-- significance_analysis.json contains per_metric_significance.
-- visual_output contains figures and aggregate table files.
 
