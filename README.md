@@ -234,6 +234,7 @@ python experiments/visualize_results.py
 
 ## Citation
 
+
 ```bibtex
 @misc{graphrag2026,
   title        = {Beyond Vector Search: Mitigating LLM Hallucinations via Graph-Based Retrieval-Augmented Generation (GraphRAG)},
@@ -243,4 +244,3 @@ python experiments/visualize_results.py
   howpublished = {\url{https://github.com/andy1924/Graph-RAG}}
 }
 ```
-
